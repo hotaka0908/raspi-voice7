@@ -282,6 +282,7 @@ def send_recorded_voice_message(client: OpenAIRealtimeClient) -> bool:
 async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHandler):
     """音声入力ループ"""
     global running, button, is_recording
+    chunk_count = 0
 
     while running:
         if Config.USE_BUTTON and button:
@@ -309,6 +310,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                     else:
                         client.last_response_time = None
                         logger.info("=== 録音開始 ===")
+                        chunk_count = 0
 
                         if audio_handler.start_input_stream():
                             is_recording = True
@@ -316,18 +318,27 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         else:
                             continue
 
-                # 音声送信
+                # 音声送信（ノンブロッキング）
                 chunk = audio_handler.read_audio_chunk()
                 if chunk and len(chunk) > 0:
+                    chunk_count += 1
                     await client.send_audio_chunk(chunk)
             else:
                 if is_recording:
                     is_recording = False
                     audio_handler.stop_input_stream()
-                    logger.info("=== 録音停止 ===")
-                    await client.send_activity_end()
+                    # 録音時間を計算（CHUNK_SIZE / INPUT_SAMPLE_RATE * チャンク数）
+                    duration = chunk_count * Config.CHUNK_SIZE / Config.INPUT_SAMPLE_RATE
+                    logger.info(f"=== 録音停止 ({chunk_count}チャンク, {duration:.1f}秒) ===")
 
-        await asyncio.sleep(0.01)
+                    # 最小録音時間チェック（0.5秒未満は短すぎる）
+                    if duration < 0.5:
+                        logger.warning("録音が短すぎます。バッファをクリアします。")
+                        await client.clear_input_buffer()
+                    else:
+                        await client.send_activity_end()
+
+        await asyncio.sleep(0.01)  # 10ms（raspi-voice3と同じ）
 
 
 async def main_async():

@@ -22,8 +22,8 @@ class Config:
     # オーディオ設定 (OpenAI Realtime API仕様)
     SEND_SAMPLE_RATE = 24000      # OpenAI入力: 24kHz
     RECEIVE_SAMPLE_RATE = 24000   # OpenAI出力: 24kHz
-    INPUT_SAMPLE_RATE = 48000     # マイク入力: 48kHz
-    OUTPUT_SAMPLE_RATE = 48000    # スピーカー出力: 48kHz
+    INPUT_SAMPLE_RATE = 44100     # マイク入力: 44.1kHz (raspi-voice3と同じ)
+    OUTPUT_SAMPLE_RATE = 44100    # スピーカー出力: 44.1kHz
     CHANNELS = 1                  # モノラル
     CHUNK_SIZE = 1024
 

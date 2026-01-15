@@ -2,6 +2,7 @@
 オーディオハンドラ
 
 マイク入力・スピーカー出力の管理
+（raspi-voice3の実装に基づく）
 """
 
 import io
@@ -67,7 +68,7 @@ def resample_audio(audio_data: bytes, from_rate: int, to_rate: int) -> bytes:
 
 
 class AudioHandler:
-    """オーディオ入出力ハンドラ"""
+    """オーディオ入出力ハンドラ（raspi-voice3ベース）"""
 
     def __init__(self):
         self.audio = pyaudio.PyAudio()

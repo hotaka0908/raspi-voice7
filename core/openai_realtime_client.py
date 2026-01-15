@@ -16,8 +16,8 @@ from config import Config
 from prompts import get_system_prompt
 from capabilities import get_executor, CapabilityResult
 
-# ロガー設定
-logger = logging.getLogger("openai")
+# ロガー設定（main.pyと同じロガーを使用）
+logger = logging.getLogger("conversation")
 
 
 class OpenAIRealtimeClient:
@@ -57,7 +57,8 @@ class OpenAIRealtimeClient:
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
             "input_audio_transcription": {
-                "model": "whisper-1"
+                "model": "whisper-1",
+                "language": "ja"  # 日本語を明示的に指定
             },
             "turn_detection": None,  # 手動制御
             "tools": self.executor.get_openai_tools(),
@@ -112,9 +113,17 @@ class OpenAIRealtimeClient:
 
     async def send_activity_start(self) -> None:
         """音声活動開始を通知"""
-        # OpenAI Realtime APIでは明示的な開始通知は不要
-        # 音声データの送信で開始を認識
-        pass
+        # 録音開始時にバッファをクリア（raspi-voice3と同様）
+        await self.clear_input_buffer()
+
+    async def clear_input_buffer(self) -> None:
+        """入力バッファをクリア"""
+        if not self.is_connected or not self.ws:
+            return
+        try:
+            await self._send_event("input_audio_buffer.clear")
+        except Exception as e:
+            logger.error(f"バッファクリアエラー: {e}")
 
     async def send_activity_end(self) -> None:
         """音声活動終了を通知（レスポンス生成をトリガー）"""
