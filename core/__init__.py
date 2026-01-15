@@ -1,7 +1,7 @@
 """
 Core層
 
-音声処理、Gemini Live API、Firebase連携
+音声処理、OpenAI Realtime API、Firebase連携
 """
 
 from .audio import (
@@ -11,7 +11,7 @@ from .audio import (
     generate_startup_sound,
     generate_notification_sound
 )
-from .gemini_client import GeminiLiveClient
+from .openai_realtime_client import OpenAIRealtimeClient
 from .firebase_voice import FirebaseVoiceMessenger
 
 __all__ = [
@@ -20,6 +20,6 @@ __all__ = [
     'resample_audio',
     'generate_startup_sound',
     'generate_notification_sound',
-    'GeminiLiveClient',
+    'OpenAIRealtimeClient',
     'FirebaseVoiceMessenger',
 ]

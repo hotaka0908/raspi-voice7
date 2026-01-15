@@ -111,7 +111,7 @@ class AudioHandler:
             self.input_stream = None
 
     def read_audio_chunk(self) -> Optional[bytes]:
-        """音声チャンクを読み取り（16kHzにリサンプリング）"""
+        """音声チャンクを読み取り（API用サンプルレートにリサンプリング）"""
         if self.input_stream and self.is_recording:
             try:
                 data = self.input_stream.read(Config.CHUNK_SIZE, exception_on_overflow=False)
@@ -152,7 +152,7 @@ class AudioHandler:
             self.output_stream = None
 
     def play_audio_chunk(self, audio_data: bytes) -> None:
-        """Gemini出力（24kHz）を48kHzにリサンプリングして再生"""
+        """API出力（24kHz）を48kHzにリサンプリングして再生"""
         if self.output_stream and self.is_playing:
             try:
                 resampled = resample_audio(

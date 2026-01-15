@@ -28,7 +28,7 @@ def get_gemini_client():
     """Geminiクライアントを取得（遅延初期化）"""
     global _gemini_client
     if _gemini_client is None:
-        _gemini_client = genai.Client(api_key=Config.get_api_key())
+        _gemini_client = genai.Client(api_key=Config.get_google_api_key())
     return _gemini_client
 
 

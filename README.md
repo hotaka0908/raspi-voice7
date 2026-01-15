@@ -1,20 +1,31 @@
-# raspi-voice6
+# raspi-voice7
 
-Raspberry Pi上で動作するCapability UXベースの音声AIアシスタント。
+Raspberry Pi上で動作するCapability UXベースの音声AIアシスタント。**OpenAI Realtime API版**
 
 ユーザーの意図を理解し、適切な能力を選択・組み合わせ、世界を代行して実行する「翻訳層」として機能します。
+
+## raspi-voice6との違い
+
+| 項目 | raspi-voice6 | raspi-voice7 |
+|------|--------------|--------------|
+| 音声AI | Gemini Live API | OpenAI Realtime API |
+| LLM | Gemini 2.5 Flash | GPT-4o |
+| STT | Gemini内蔵 | Whisper |
+| TTS | Gemini内蔵 | OpenAI内蔵 |
+| Vision/Search | Gemini | Gemini（継続使用） |
 
 ## 機能
 
 ### コア機能
-- **リアルタイム音声対話**: Gemini Live APIを使用した自然な音声会話
+- **リアルタイム音声対話**: OpenAI Realtime APIを使用した自然な音声会話
 - **物理ボタン操作**: GPIOボタンで会話開始/終了を制御
 
 ### Capabilities（能力）
 - **Gmail**: メールの確認・送信・返信
 - **Googleカレンダー**: 予定の確認・追加・管理
 - **アラーム/リマインダー**: 時間指定の通知
-- **Web検索**: インターネット検索
+- **Web検索**: インターネット検索（Gemini使用）
+- **ビジョン**: カメラで見て理解（Gemini使用）
 - **ライフログ**: 日常の記録
 - **音声メッセージ**: スマホとの音声メッセージ送受信
 
@@ -41,7 +52,7 @@ Firebase経由でスマホと連携する音声メッセージ機能。Webアプ
 sudo apt update
 sudo apt install -y python3-pip python3-venv ffmpeg portaudio19-dev python3-lgpio
 
-cd raspi-voice6
+cd raspi-voice7
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -52,6 +63,10 @@ pip install -r requirements.txt
 `~/.ai-necklace/.env` に以下を設定:
 
 ```
+# 必須: OpenAI API（音声対話用）
+OPENAI_API_KEY=your_openai_api_key
+
+# 任意: Google API（Vision/Search用）
 GOOGLE_API_KEY=your_gemini_api_key
 ```
 
@@ -100,22 +115,22 @@ sudo systemctl start ai-necklace
 ## ディレクトリ構成
 
 ```
-raspi-voice6/
-├── main.py              # エントリーポイント
-├── config.py            # 設定
-├── core/                # コア機能
-│   ├── audio.py         # 音声入出力
-│   ├── gemini_client.py # Gemini Live APIクライアント
-│   └── firebase_voice.py # Firebase音声メッセージ
-├── capabilities/        # 能力モジュール
-│   ├── communication.py # Gmail連携
-│   ├── calendar.py      # カレンダー連携
-│   ├── schedule.py      # アラーム/リマインダー
-│   ├── search.py        # Web検索
-│   ├── memory.py        # 記憶/ライフログ
-│   └── vision.py        # ビジョン機能
-├── prompts/             # システムプロンプト
-└── docs/                # Voice Messenger Webアプリ
+raspi-voice7/
+├── main.py                    # エントリーポイント
+├── config.py                  # 設定
+├── core/                      # コア機能
+│   ├── audio.py               # 音声入出力
+│   ├── openai_realtime_client.py  # OpenAI Realtime APIクライアント
+│   └── firebase_voice.py      # Firebase音声メッセージ
+├── capabilities/              # 能力モジュール
+│   ├── communication.py       # Gmail連携
+│   ├── calendar.py            # カレンダー連携
+│   ├── schedule.py            # アラーム/リマインダー
+│   ├── search.py              # Web検索（Gemini）
+│   ├── memory.py              # 記憶/ライフログ
+│   └── vision.py              # ビジョン機能（Gemini）
+├── prompts/                   # システムプロンプト
+└── docs/                      # Voice Messenger Webアプリ
 ```
 
 ## 使い方

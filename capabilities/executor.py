@@ -5,7 +5,6 @@ Capability実行エンジン
 """
 
 from typing import Any, Dict, List, Optional
-from google.genai import types
 
 from .base import Capability, CapabilityResult
 from .vision import VISION_CAPABILITIES
@@ -52,9 +51,9 @@ class CapabilityExecutor:
         """Capabilityを取得"""
         return self._capabilities.get(name)
 
-    def get_gemini_tools(self) -> List[types.Tool]:
-        """Gemini API用のツール定義を取得"""
-        function_declarations = []
+    def get_openai_tools(self) -> List[Dict[str, Any]]:
+        """OpenAI Realtime API用のツール定義を取得"""
+        tools = []
 
         for cap in self._capabilities.values():
             tool_def = cap.get_tool_definition()
@@ -62,26 +61,27 @@ class CapabilityExecutor:
             properties = params.get("properties", {})
             required = params.get("required", [])
 
+            # OpenAI形式のパラメータスキーマ
             schema_props = {}
             for prop_name, prop in properties.items():
-                prop_type = prop.get("type", "string").upper()
-                schema_props[prop_name] = types.Schema(
-                    type=prop_type,
-                    description=prop.get("description", "")
-                )
+                schema_props[prop_name] = {
+                    "type": prop.get("type", "string"),
+                    "description": prop.get("description", "")
+                }
 
-            func_decl = types.FunctionDeclaration(
-                name=tool_def["name"],
-                description=tool_def["description"],
-                parameters=types.Schema(
-                    type="OBJECT",
-                    properties=schema_props,
-                    required=required if required else None
-                )
-            )
-            function_declarations.append(func_decl)
+            tool = {
+                "type": "function",
+                "name": tool_def["name"],
+                "description": tool_def["description"],
+                "parameters": {
+                    "type": "object",
+                    "properties": schema_props,
+                    "required": required if required else []
+                }
+            }
+            tools.append(tool)
 
-        return [types.Tool(function_declarations=function_declarations)]
+        return tools
 
 
 # シングルトンインスタンス

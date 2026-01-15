@@ -1,4 +1,8 @@
-# Gemini API
+# OpenAI API (Realtime, Whisper)
+openai>=1.0.0
+websockets>=12.0
+
+# Gemini API (Vision, Search用)
 google-genai>=0.4.0
 
 # Audio handling

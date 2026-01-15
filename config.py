@@ -1,5 +1,5 @@
 """
-raspi-voice6 設定
+raspi-voice7 設定 (OpenAI Realtime API版)
 
 環境変数から読み込み、デフォルト値を提供
 """
@@ -15,13 +15,13 @@ load_dotenv(env_path)
 class Config:
     """アプリケーション設定"""
 
-    # Gemini Live API設定
-    MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
-    VOICE = "Kore"  # Gemini voice: Puck, Charon, Kore, Fenrir, Aoede
+    # OpenAI Realtime API設定
+    MODEL = "gpt-4o-realtime-preview"
+    VOICE = "alloy"  # OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
 
-    # オーディオ設定 (Gemini Live API仕様)
-    SEND_SAMPLE_RATE = 16000      # Gemini入力: 16kHz
-    RECEIVE_SAMPLE_RATE = 24000   # Gemini出力: 24kHz
+    # オーディオ設定 (OpenAI Realtime API仕様)
+    SEND_SAMPLE_RATE = 24000      # OpenAI入力: 24kHz
+    RECEIVE_SAMPLE_RATE = 24000   # OpenAI出力: 24kHz
     INPUT_SAMPLE_RATE = 48000     # マイク入力: 48kHz
     OUTPUT_SAMPLE_RATE = 48000    # スピーカー出力: 48kHz
     CHANNELS = 1                  # モノラル
@@ -57,7 +57,15 @@ class Config:
     # APIキー
     @classmethod
     def get_api_key(cls) -> str:
-        """APIキーを取得"""
+        """OpenAI APIキーを取得"""
+        key = os.getenv("OPENAI_API_KEY")
+        if not key:
+            raise ValueError("OPENAI_API_KEY が設定されていません")
+        return key
+
+    @classmethod
+    def get_google_api_key(cls) -> str:
+        """Google APIキーを取得（Vision/Search用）"""
         key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not key:
             raise ValueError("GOOGLE_API_KEY または GEMINI_API_KEY が設定されていません")

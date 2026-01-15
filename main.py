@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-raspi-voice6 - Capability UX ベースの音声AIアシスタント
+raspi-voice7 - OpenAI Realtime API版 Capability UX ベースの音声AIアシスタント
 
 ユーザーの意図を理解し、適切な能力を選択・組み合わせ、
 世界を代行して実行する「翻訳層」として機能する。
@@ -24,7 +24,7 @@ import numpy as np
 from config import Config
 from core import (
     AudioHandler,
-    GeminiLiveClient,
+    OpenAIRealtimeClient,
     generate_startup_sound,
     generate_notification_sound
 )
@@ -150,7 +150,7 @@ def on_voice_message_received(message):
             # テキストがない場合はSTTでテキスト化してFirebaseに保存
             if not message.get("text"):
                 try:
-                    transcribed_text = transcribe_audio_with_gemini(wav_data)
+                    transcribed_text = transcribe_audio(wav_data)
                     if transcribed_text:
                         message_id = message.get("id")
                         if message_id:
@@ -165,26 +165,28 @@ def on_voice_message_received(message):
         logger.error(f"メッセージ受信エラー: {e}")
 
 
-def transcribe_audio_with_gemini(wav_data: bytes) -> Optional[str]:
-    """Gemini APIで音声を文字起こし"""
-    from google import genai
-    from google.genai import types
+def transcribe_audio(wav_data: bytes) -> Optional[str]:
+    """OpenAI Whisper APIで音声を文字起こし"""
+    from openai import OpenAI
 
     try:
-        client = genai.Client(api_key=Config.get_api_key())
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-preview-05-20",
-            contents=[
-                types.Part.from_text(
-                    text="日本語の音声です。話された内容をそのまま正確に文字起こししてください。句読点を適切に入れてください。余計な説明や補足は不要です。"
-                ),
-                types.Part.from_bytes(data=wav_data, mime_type="audio/wav")
-            ]
-        )
+        client = OpenAI(api_key=Config.get_api_key())
 
-        if response and response.text:
-            return response.text.strip()
-        return None
+        # 一時ファイルに保存
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(wav_data)
+            temp_path = f.name
+
+        try:
+            with open(temp_path, "rb") as audio_file:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language="ja"
+                )
+            return transcript.text.strip() if transcript.text else None
+        finally:
+            os.unlink(temp_path)
 
     except Exception:
         return None
@@ -252,7 +254,7 @@ def record_voice_message() -> Optional[io.BytesIO]:
     return wav_buffer
 
 
-def send_recorded_voice_message(client: GeminiLiveClient) -> bool:
+def send_recorded_voice_message(client: OpenAIRealtimeClient) -> bool:
     """録音した音声をスマホに送信"""
     client.reset_voice_message_mode()
 
@@ -264,7 +266,7 @@ def send_recorded_voice_message(client: GeminiLiveClient) -> bool:
 
         wav_buffer.seek(0)
         wav_data = wav_buffer.read()
-        transcribed_text = transcribe_audio_with_gemini(wav_data)
+        transcribed_text = transcribe_audio(wav_data)
 
         messenger = get_firebase_messenger()
         if messenger and messenger.send_message(wav_data, text=transcribed_text):
@@ -277,7 +279,7 @@ def send_recorded_voice_message(client: GeminiLiveClient) -> bool:
         return False
 
 
-async def audio_input_loop(client: GeminiLiveClient, audio_handler: AudioHandler):
+async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHandler):
     """音声入力ループ"""
     global running, button, is_recording
 
@@ -338,7 +340,7 @@ async def main_async():
     # コールバック設定
     set_play_audio_callback(audio_handler.play_audio_buffer)
 
-    client = GeminiLiveClient(audio_handler)
+    client = OpenAIRealtimeClient(audio_handler)
     receive_task = None
     input_task = None
     first_start = True
@@ -406,7 +408,7 @@ async def main_async():
 
                 if first_start:
                     print("\n" + "=" * 50)
-                    print("raspi-voice6 起動")
+                    print("raspi-voice7 起動 (OpenAI Realtime API)")
                     print("=" * 50)
                     print("ボタンを押して話しかけてください")
                     print("=" * 50 + "\n")
