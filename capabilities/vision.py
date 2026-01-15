@@ -7,11 +7,11 @@
 - 目の前のものを理解する
 """
 
+import base64
 import subprocess
 import threading
 from typing import Any, Dict, Optional
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
@@ -20,16 +20,16 @@ from config import Config
 # カメラ排他制御用ロック
 camera_lock = threading.Lock()
 
-# Geminiクライアント（Vision API用）
-_gemini_client = None
+# OpenAIクライアント（Vision API用）
+_openai_client = None
 
 
-def get_gemini_client():
-    """Geminiクライアントを取得（遅延初期化）"""
-    global _gemini_client
-    if _gemini_client is None:
-        _gemini_client = genai.Client(api_key=Config.get_google_api_key())
-    return _gemini_client
+def get_openai_client():
+    """OpenAIクライアントを取得（遅延初期化）"""
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = OpenAI(api_key=Config.get_api_key())
+    return _openai_client
 
 
 class CameraCapture(Capability):
@@ -98,17 +98,35 @@ promptで質問を渡すと、見たものについてその質問に答える""
 
         # 画像分析（ロック外で実行）
         try:
-            client = get_gemini_client()
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=[
-                    types.Part.from_text(
-                        text=prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"
-                    ),
-                    types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
-                ]
+            client = get_openai_client()
+
+            # 画像をBase64エンコード
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_base64}",
+                                    "detail": "auto"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=300
             )
-            return CapabilityResult.ok(response.text)
+
+            return CapabilityResult.ok(response.choices[0].message.content)
 
         except Exception:
             return CapabilityResult.fail("今は見えません")

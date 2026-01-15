@@ -12,7 +12,8 @@ Raspberry Pi上で動作するCapability UXベースの音声AIアシスタン�
 | LLM | Gemini 2.5 Flash | GPT-4o |
 | STT | Gemini内蔵 | Whisper |
 | TTS | Gemini内蔵 | OpenAI内蔵 |
-| Vision/Search | Gemini | Gemini（継続使用） |
+| Vision | Gemini | GPT-4o Vision |
+| Search | Gemini | Gemini（継続使用） |
 
 ## 機能
 
@@ -25,7 +26,7 @@ Raspberry Pi上で動作するCapability UXベースの音声AIアシスタン�
 - **Googleカレンダー**: 予定の確認・追加・管理
 - **アラーム/リマインダー**: 時間指定の通知
 - **Web検索**: インターネット検索（Gemini使用）
-- **ビジョン**: カメラで見て理解（Gemini使用）
+- **ビジョン**: カメラで見て理解（GPT-4o Vision）
 - **ライフログ**: 日常の記録
 - **音声メッセージ**: スマホとの音声メッセージ送受信
 
@@ -128,7 +129,7 @@ raspi-voice7/
 │   ├── schedule.py            # アラーム/リマインダー
 │   ├── search.py              # Web検索（Gemini）
 │   ├── memory.py              # 記憶/ライフログ
-│   └── vision.py              # ビジョン機能（Gemini）
+│   └── vision.py              # ビジョン機能（GPT-4o）
 ├── prompts/                   # システムプロンプト
 └── docs/                      # Voice Messenger Webアプリ
 ```
