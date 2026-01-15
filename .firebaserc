@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "raspi-111"
+  },
+  "targets": {
+    "raspi-111": {
+      "hosting": {
+        "raspi-voice6": [
+          "raspi-voice6"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

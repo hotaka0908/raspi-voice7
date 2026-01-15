@@ -1,0 +1,17 @@
+{
+    "name": "Voice Messenger - raspi-voice6",
+    "short_name": "Voice6",
+    "description": "raspi-voice6 音声メッセージアプリ",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#1a1a2e",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100' rx='20'/><path fill='%23f43f5e' d='M50 20c-5.5 0-10 4.5-10 10v20c0 5.5 4.5 10 10 10s10-4.5 10-10V30c0-5.5-4.5-10-10-10zm20 30c0 9.4-6.8 17.2-15.8 18.8V75h-8.4v-6.2C36.8 67.2 30 59.4 30 50h6c0 7.7 6.3 14 14 14s14-6.3 14-14h6z'/></svg>",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        }
+    ]
+}

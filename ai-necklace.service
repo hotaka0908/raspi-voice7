@@ -1,0 +1,24 @@
+[Unit]
+Description=raspi-voice6 - Capability UX Voice AI Assistant
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/raspi-voice6
+ExecStart=/home/pi/raspi-voice6/venv/bin/python /home/pi/raspi-voice6/main.py
+Restart=always
+RestartSec=5
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/home/pi
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=raspi-voice6
+
+[Install]
+WantedBy=multi-user.target
