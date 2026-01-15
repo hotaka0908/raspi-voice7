@@ -500,7 +500,7 @@ class VoiceSend(Capability):
         # 録音モードを開始するフラグを返す
         # 実際の録音はメインループで処理
         return CapabilityResult.ok(
-            "どうぞ",
+            "録音モードに入りました。ユーザーに「どうぞ」とだけ伝えてください。まだ送信していません。",
             data={"start_voice_recording": True}
         )
 
