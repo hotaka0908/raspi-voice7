@@ -71,6 +71,14 @@ class Config:
             raise ValueError("GOOGLE_API_KEY または GEMINI_API_KEY が設定されていません")
         return key
 
+    @classmethod
+    def get_tavily_api_key(cls) -> str:
+        """Tavily APIキーを取得（Web検索用）"""
+        key = os.getenv("TAVILY_API_KEY")
+        if not key:
+            raise ValueError("TAVILY_API_KEY が設定されていません")
+        return key
+
     # Gmail APIスコープ
     GMAIL_SCOPES = [
         'https://www.googleapis.com/auth/gmail.readonly',

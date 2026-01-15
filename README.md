@@ -13,7 +13,7 @@ Raspberry Pi上で動作するCapability UXベースの音声AIアシスタン�
 | STT | Gemini内蔵 | Whisper |
 | TTS | Gemini内蔵 | OpenAI内蔵 |
 | Vision | Gemini | GPT-4o Vision |
-| Search | Gemini | Gemini（継続使用） |
+| Search | Gemini | Tavily API |
 
 ## 機能
 
@@ -25,7 +25,7 @@ Raspberry Pi上で動作するCapability UXベースの音声AIアシスタン�
 - **Gmail**: メールの確認・送信・返信
 - **Googleカレンダー**: 予定の確認・追加・管理
 - **アラーム/リマインダー**: 時間指定の通知
-- **Web検索**: インターネット検索（Gemini使用）
+- **Web検索**: インターネット検索（Tavily API）
 - **ビジョン**: カメラで見て理解（GPT-4o Vision）
 - **ライフログ**: 日常の記録
 - **音声メッセージ**: スマホとの音声メッセージ送受信
@@ -64,11 +64,11 @@ pip install -r requirements.txt
 `~/.ai-necklace/.env` に以下を設定:
 
 ```
-# 必須: OpenAI API（音声対話用）
+# 必須: OpenAI API（音声対話、Vision用）
 OPENAI_API_KEY=your_openai_api_key
 
-# 任意: Google API（Vision/Search用）
-GOOGLE_API_KEY=your_gemini_api_key
+# 任意: Tavily API（Web検索用）
+TAVILY_API_KEY=your_tavily_api_key
 ```
 
 ### 3. Gmail/カレンダー連携（オプション）
@@ -127,7 +127,7 @@ raspi-voice7/
 │   ├── communication.py       # Gmail連携
 │   ├── calendar.py            # カレンダー連携
 │   ├── schedule.py            # アラーム/リマインダー
-│   ├── search.py              # Web検索（Gemini）
+│   ├── search.py              # Web検索（Tavily）
 │   ├── memory.py              # 記憶/ライフログ
 │   └── vision.py              # ビジョン機能（GPT-4o）
 ├── prompts/                   # システムプロンプト

@@ -7,23 +7,22 @@
 """
 
 from typing import Any, Dict
-from google import genai
-from google.genai import types
+from tavily import TavilyClient
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
 
 
-# Geminiクライアント（検索用）
-_gemini_client = None
+# Tavilyクライアント（検索用）
+_tavily_client = None
 
 
-def get_gemini_client():
-    """Geminiクライアントを取得"""
-    global _gemini_client
-    if _gemini_client is None:
-        _gemini_client = genai.Client(api_key=Config.get_google_api_key())
-    return _gemini_client
+def get_tavily_client():
+    """Tavilyクライアントを取得"""
+    global _tavily_client
+    if _tavily_client is None:
+        _tavily_client = TavilyClient(api_key=Config.get_tavily_api_key())
+    return _tavily_client
 
 
 class WebSearch(Capability):
@@ -70,51 +69,43 @@ queryで検索キーワードを渡す"""
     def execute(self, query: str) -> CapabilityResult:
         """Web検索を実行"""
         try:
-            client = get_gemini_client()
+            client = get_tavily_client()
 
-            # Google Search Groundingを使用
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=f"""以下の質問に対して、最新の情報を調べて簡潔に答えてください。
-音声で読み上げるため、1-3文程度で要点だけお願いします。
-
-質問: {query}""",
-                config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())],
-                )
+            # Tavily検索を実行
+            response = client.search(
+                query=query,
+                search_depth="basic",
+                max_results=5,
+                include_answer=True,  # AI生成の要約を含める
             )
 
-            if response and response.text:
-                return CapabilityResult.ok(response.text.strip())
-            else:
-                return CapabilityResult.fail("情報が見つかりませんでした")
+            # AI生成の回答があればそれを使用
+            if response.get("answer"):
+                return CapabilityResult.ok(response["answer"])
 
-        except Exception as e:
-            # エラーの種類に応じて対応
-            error_str = str(e)
-            if "google_search" in error_str.lower() or "grounding" in error_str.lower():
-                # Grounding未対応の場合、通常のGeminiで回答
-                return self._fallback_search(query)
-            return CapabilityResult.fail("今は調べられません")
+            # なければ検索結果から要約を作成
+            results = response.get("results", [])
+            if results:
+                # 上位3件の内容を要約
+                summaries = []
+                for r in results[:3]:
+                    title = r.get("title", "")
+                    content = r.get("content", "")
+                    if content:
+                        # 長すぎる場合は切り詰め
+                        if len(content) > 200:
+                            content = content[:200] + "..."
+                        summaries.append(f"{title}: {content}")
 
-    def _fallback_search(self, query: str) -> CapabilityResult:
-        """Grounding未対応時のフォールバック"""
-        try:
-            client = get_gemini_client()
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=f"""以下の質問に答えてください。
-最新情報が必要な場合は「最新情報は確認できませんが」と前置きしてください。
-音声で読み上げるため、1-3文程度で簡潔に。
+                if summaries:
+                    return CapabilityResult.ok("\n".join(summaries))
 
-質問: {query}"""
-            )
-
-            if response and response.text:
-                return CapabilityResult.ok(response.text.strip())
             return CapabilityResult.fail("情報が見つかりませんでした")
 
-        except Exception:
+        except Exception as e:
+            error_str = str(e)
+            if "api_key" in error_str.lower():
+                return CapabilityResult.fail("検索機能が設定されていません")
             return CapabilityResult.fail("今は調べられません")
 
 

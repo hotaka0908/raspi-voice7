@@ -1,9 +1,9 @@
-# OpenAI API (Realtime, Whisper)
+# OpenAI API (Realtime, Whisper, Vision)
 openai>=1.0.0
 websockets>=12.0
 
-# Gemini API (Vision, Search用)
-google-genai>=0.4.0
+# Tavily API (Web検索用)
+tavily-python>=0.3.0
 
 # Audio handling
 pyaudio
