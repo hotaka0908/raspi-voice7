@@ -493,7 +493,8 @@ class VoiceSend(Capability):
     def _get_parameters(self) -> Dict[str, Any]:
         return {"type": "object", "properties": {}}
 
-    def execute(self) -> CapabilityResult:
+    def execute(self, **kwargs) -> CapabilityResult:
+        """余分なパラメータ（message等）は無視して録音モードに入る"""
         if not _firebase_messenger:
             return CapabilityResult.fail("今はスマホに連絡できません")
 
@@ -528,7 +529,8 @@ class VoiceSendPhoto(Capability):
     def _get_parameters(self) -> Dict[str, Any]:
         return {"type": "object", "properties": {}}
 
-    def execute(self) -> CapabilityResult:
+    def execute(self, **kwargs) -> CapabilityResult:
+        """余分なパラメータは無視"""
         if not _firebase_messenger:
             return CapabilityResult.fail("今はスマホに送れません")
 

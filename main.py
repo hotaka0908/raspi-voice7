@@ -322,6 +322,8 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                 chunk = audio_handler.read_audio_chunk()
                 if chunk and len(chunk) > 0:
                     chunk_count += 1
+                    if chunk_count <= 3 or chunk_count % 20 == 0:
+                        logger.debug(f"チャンク {chunk_count}: {len(chunk)} bytes")
                     await client.send_audio_chunk(chunk)
             else:
                 if is_recording:

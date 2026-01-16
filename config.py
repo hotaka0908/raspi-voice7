@@ -22,10 +22,10 @@ class Config:
     # オーディオ設定 (OpenAI Realtime API仕様)
     SEND_SAMPLE_RATE = 24000      # OpenAI入力: 24kHz
     RECEIVE_SAMPLE_RATE = 24000   # OpenAI出力: 24kHz
-    INPUT_SAMPLE_RATE = 48000     # マイク入力: 48kHz
+    INPUT_SAMPLE_RATE = 48000     # マイク入力: 48kHz (PyAudioはUSBマイクで48kHzのみ対応)
     OUTPUT_SAMPLE_RATE = 48000    # スピーカー出力: 48kHz (デバイスが48kHzのみ対応)
     CHANNELS = 1                  # モノラル
-    CHUNK_SIZE = 1024
+    CHUNK_SIZE = 512              # 512が最も効率的（読み取り遅延が少ない）
 
     # デバイス設定（None = 自動検出）
     INPUT_DEVICE_INDEX = None
@@ -47,7 +47,7 @@ class Config:
     LIFELOG_INTERVAL = 60  # 1分（秒）
 
     # セッション設定
-    SESSION_RESET_TIMEOUT = 30  # 秒（応答後このくらい経過でリセット）
+    SESSION_RESET_TIMEOUT = 10  # 秒（応答後このくらい経過でリセット）
     VOICE_MESSAGE_TIMEOUT = 60  # 秒（音声メッセージモードのタイムアウト）
 
     # 再接続設定

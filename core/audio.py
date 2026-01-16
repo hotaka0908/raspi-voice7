@@ -45,12 +45,17 @@ def find_audio_device(p: pyaudio.PyAudio, device_type: str = "input") -> Optiona
     return None
 
 
-def resample_audio(audio_data: bytes, from_rate: int, to_rate: int) -> bytes:
-    """オーディオをリサンプリング"""
-    if from_rate == to_rate:
-        return audio_data
-
+def resample_audio(audio_data: bytes, from_rate: int, to_rate: int, gain: float = 1.0) -> bytes:
+    """オーディオをリサンプリング（オプションで増幅）"""
     audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
+
+    # 増幅（クリッピング防止）
+    if gain != 1.0:
+        audio_array = audio_array * gain
+        audio_array = np.clip(audio_array, -32768, 32767)
+
+    if from_rate == to_rate:
+        return audio_array.astype(np.int16).tobytes()
 
     ratio = from_rate / to_rate
     if ratio == int(ratio) and ratio > 1:
@@ -112,11 +117,12 @@ class AudioHandler:
             self.input_stream = None
 
     def read_audio_chunk(self) -> Optional[bytes]:
-        """音声チャンクを読み取り（API用サンプルレートにリサンプリング）"""
+        """音声チャンクを読み取り（API用サンプルレートにリサンプリング+増幅）"""
         if self.input_stream and self.is_recording:
             try:
                 data = self.input_stream.read(Config.CHUNK_SIZE, exception_on_overflow=False)
-                return resample_audio(data, Config.INPUT_SAMPLE_RATE, Config.SEND_SAMPLE_RATE)
+                # マイク音量が低いため5倍に増幅
+                return resample_audio(data, Config.INPUT_SAMPLE_RATE, Config.SEND_SAMPLE_RATE, gain=5.0)
             except Exception:
                 pass
         return None
