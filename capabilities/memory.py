@@ -23,6 +23,7 @@ from config import Config
 
 # ライフログ状態管理
 _lifelog_enabled = False
+_lifelog_paused = False  # 一時停止フラグ（ビデオ通話中など）
 _lifelog_thread: Optional[threading.Thread] = None
 _lifelog_photo_count = 0
 _running = True
@@ -50,6 +51,23 @@ def stop_lifelog_thread() -> None:
     """ライフログスレッドを停止"""
     global _running
     _running = False
+
+
+def pause_lifelog() -> None:
+    """ライフログを一時停止（ビデオ通話中など）"""
+    global _lifelog_paused
+    _lifelog_paused = True
+
+
+def resume_lifelog() -> None:
+    """ライフログを再開"""
+    global _lifelog_paused
+    _lifelog_paused = False
+
+
+def is_lifelog_paused() -> bool:
+    """ライフログが一時停止中かどうか"""
+    return _lifelog_paused
 
 
 def _generate_shutter_sound() -> Optional[bytes]:
@@ -134,13 +152,13 @@ def _capture_lifelog_photo() -> bool:
 
 def _lifelog_thread_func() -> None:
     """ライフログ撮影のバックグラウンドスレッド"""
-    global _running, _lifelog_enabled, _lifelog_photo_count
+    global _running, _lifelog_enabled, _lifelog_paused, _lifelog_photo_count
 
     last_date = datetime.now().strftime("%Y-%m-%d")
     retry_interval = 30
 
     while _running:
-        if _lifelog_enabled:
+        if _lifelog_enabled and not _lifelog_paused:
             # 日付変更でカウントリセット
             current_date = datetime.now().strftime("%Y-%m-%d")
             if current_date != last_date:
@@ -156,7 +174,7 @@ def _lifelog_thread_func() -> None:
         for _ in range(wait_time):
             if not _running:
                 break
-            if _lifelog_enabled:
+            if _lifelog_enabled and not _lifelog_paused:
                 time.sleep(1)
             else:
                 time.sleep(5)

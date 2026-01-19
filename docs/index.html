@@ -493,6 +493,185 @@
             color: white;
             font-size: 1rem;
         }
+
+        /* ビデオ通話ボタン */
+        .videocall-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        /* ビデオ通話オーバーレイ */
+        .videocall-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1a1a1a;
+            display: none;
+            flex-direction: column;
+            z-index: 500;
+        }
+
+        .videocall-overlay.active {
+            display: flex;
+        }
+
+        .videocall-overlay .video-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        .videocall-overlay #remoteVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .videocall-overlay #localVideo {
+            position: absolute;
+            bottom: 100px;
+            right: 15px;
+            width: 100px;
+            height: 133px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid white;
+            background: #333;
+        }
+
+        .videocall-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 0 20px;
+        }
+
+        .videocall-controls button {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .videocall-controls button:active {
+            transform: scale(0.95);
+        }
+
+        .videocall-controls button.off {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .videocall-controls button.end-call {
+            background: #ef4444;
+            color: white;
+        }
+
+        .videocall-status {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 1rem;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        /* 着信通知オーバーレイ */
+        .incoming-call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 600;
+        }
+
+        .incoming-call-overlay.active {
+            display: flex;
+        }
+
+        .incoming-call-card {
+            background: #2a2a2a;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            min-width: 280px;
+        }
+
+        .incoming-call-card .call-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            animation: pulse-call 1.5s infinite;
+        }
+
+        @keyframes pulse-call {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .incoming-call-card .caller-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .incoming-call-card .call-type {
+            font-size: 0.9rem;
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .incoming-call-card .call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .incoming-call-card .call-actions button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .incoming-call-card .call-actions button:active {
+            transform: scale(0.95);
+        }
+
+        .incoming-call-card .decline {
+            background: #ef4444;
+            color: white;
+        }
+
+        .incoming-call-card .accept {
+            background: #22c55e;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -503,6 +682,7 @@
         <div class="chat-partner" id="chatPartner">
             <span class="name">ラズパイ</span>
         </div>
+        <button class="videocall-btn" id="videocallBtn">📹</button>
     </div>
 
     <div class="container">
@@ -540,9 +720,37 @@
         <img id="photoModalImg" src="" alt="写真">
     </div>
 
+    <!-- ビデオ通話オーバーレイ -->
+    <div class="videocall-overlay" id="videocallOverlay">
+        <div class="video-container">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="videocall-status" id="videocallStatus">接続中...</div>
+            <div class="videocall-controls">
+                <button id="toggleVideoBtn">📹</button>
+                <button id="toggleAudioBtn">🎤</button>
+                <button id="endCallBtn" class="end-call">📞</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 着信通知オーバーレイ -->
+    <div class="incoming-call-overlay" id="incomingCallOverlay">
+        <div class="incoming-call-card">
+            <div class="call-icon">📹</div>
+            <div class="caller-name">ラズパイ</div>
+            <div class="call-type">ビデオ通話</div>
+            <div class="call-actions">
+                <button id="declineCallBtn" class="decline">✕</button>
+                <button id="acceptCallBtn" class="accept">✓</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="videocall.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, push, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, push, set, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import firebaseConfig from './firebase-config.js';
 
@@ -550,6 +758,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const storage = getStorage(app);
+
+        // Firebase関数をグローバルに公開（videocall.js用）
+        window.firebaseFunctions = { ref, push, set, onValue, update };
 
         const DEVICE_ID = 'phone';
 
@@ -1103,8 +1314,209 @@
             stopRecording(chatRecordBtn);
         });
 
+        // ========================================
+        // ビデオ通話機能
+        // ========================================
+        const videocallBtn = document.getElementById('videocallBtn');
+        const videocallOverlay = document.getElementById('videocallOverlay');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localVideo = document.getElementById('localVideo');
+        const videocallStatus = document.getElementById('videocallStatus');
+        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const endCallBtn = document.getElementById('endCallBtn');
+        const incomingCallOverlay = document.getElementById('incomingCallOverlay');
+        const acceptCallBtn = document.getElementById('acceptCallBtn');
+        const declineCallBtn = document.getElementById('declineCallBtn');
+
+        let videoCallManager = null;
+        let pendingIncomingCall = null;
+        let videoEnabled = true;
+        let audioEnabled = true;
+
+        // 着信音
+        let ringtoneInterval = null;
+        function playRingtone() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 440;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } catch (e) {
+                console.log('着信音エラー:', e);
+            }
+        }
+
+        function startRingtone() {
+            playRingtone();
+            ringtoneInterval = setInterval(playRingtone, 1500);
+        }
+
+        function stopRingtone() {
+            if (ringtoneInterval) {
+                clearInterval(ringtoneInterval);
+                ringtoneInterval = null;
+            }
+        }
+
+        // VideoCallManager初期化
+        function initVideoCall() {
+            if (!window.VideoCallManager) {
+                console.log('VideoCallManager not loaded');
+                return;
+            }
+
+            videoCallManager = new window.VideoCallManager(db);
+
+            // 着信コールバック
+            videoCallManager.onIncomingCall = (sessionId, session) => {
+                console.log('着信:', sessionId);
+                pendingIncomingCall = { sessionId, session };
+                incomingCallOverlay.classList.add('active');
+                startRingtone();
+            };
+
+            // ローカルストリームコールバック
+            videoCallManager.onLocalStream = (stream) => {
+                localVideo.srcObject = stream;
+            };
+
+            // リモートストリームコールバック
+            videoCallManager.onRemoteStream = (stream) => {
+                remoteVideo.srcObject = stream;
+            };
+
+            // 接続状態変更コールバック
+            videoCallManager.onConnectionStateChange = (state) => {
+                switch (state) {
+                    case 'connecting':
+                        videocallStatus.textContent = '接続中...';
+                        break;
+                    case 'connected':
+                        videocallStatus.textContent = '通話中';
+                        setTimeout(() => {
+                            videocallStatus.style.display = 'none';
+                        }, 2000);
+                        break;
+                    case 'disconnected':
+                        videocallStatus.textContent = '切断されました';
+                        break;
+                    case 'failed':
+                        videocallStatus.textContent = '接続失敗';
+                        break;
+                }
+            };
+
+            // 通話終了コールバック
+            videoCallManager.onCallEnded = () => {
+                hideVideoCall();
+            };
+
+            // シグナリング監視開始
+            videoCallManager.startListening();
+        }
+
+        // ビデオ通話画面表示
+        function showVideoCall() {
+            videocallOverlay.classList.add('active');
+            videocallStatus.style.display = 'block';
+            videocallStatus.textContent = '接続中...';
+            videoEnabled = true;
+            audioEnabled = true;
+            toggleVideoBtn.classList.remove('off');
+            toggleAudioBtn.classList.remove('off');
+        }
+
+        // ビデオ通話画面非表示
+        function hideVideoCall() {
+            videocallOverlay.classList.remove('active');
+            remoteVideo.srcObject = null;
+            localVideo.srcObject = null;
+        }
+
+        // 発信ボタン
+        videocallBtn.addEventListener('click', async () => {
+            if (!videoCallManager) {
+                alert('ビデオ通話の初期化に失敗しました');
+                return;
+            }
+
+            try {
+                showVideoCall();
+                await videoCallManager.startCall();
+            } catch (error) {
+                console.error('発信エラー:', error);
+                alert('発信に失敗しました');
+                hideVideoCall();
+            }
+        });
+
+        // 着信応答ボタン
+        acceptCallBtn.addEventListener('click', async () => {
+            if (!pendingIncomingCall || !videoCallManager) return;
+
+            stopRingtone();
+            incomingCallOverlay.classList.remove('active');
+
+            try {
+                showVideoCall();
+                await videoCallManager.acceptCall(
+                    pendingIncomingCall.sessionId,
+                    pendingIncomingCall.session
+                );
+            } catch (error) {
+                console.error('応答エラー:', error);
+                hideVideoCall();
+            }
+
+            pendingIncomingCall = null;
+        });
+
+        // 着信拒否ボタン
+        declineCallBtn.addEventListener('click', async () => {
+            if (!pendingIncomingCall || !videoCallManager) return;
+
+            stopRingtone();
+            incomingCallOverlay.classList.remove('active');
+            await videoCallManager.rejectCall(pendingIncomingCall.sessionId);
+            pendingIncomingCall = null;
+        });
+
+        // 通話終了ボタン
+        endCallBtn.addEventListener('click', async () => {
+            if (videoCallManager) {
+                await videoCallManager.endCall();
+            }
+            hideVideoCall();
+        });
+
+        // ビデオON/OFFボタン
+        toggleVideoBtn.addEventListener('click', () => {
+            if (!videoCallManager) return;
+            videoEnabled = videoCallManager.toggleVideo();
+            toggleVideoBtn.classList.toggle('off', !videoEnabled);
+        });
+
+        // オーディオON/OFFボタン
+        toggleAudioBtn.addEventListener('click', () => {
+            if (!videoCallManager) return;
+            audioEnabled = videoCallManager.toggleAudio();
+            toggleAudioBtn.classList.toggle('off', !audioEnabled);
+        });
+
         // 初期化
         listenForMessages();
+        initVideoCall();
     </script>
 </body>
 </html>

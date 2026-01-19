@@ -54,6 +54,18 @@ class Config:
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_DELAY_BASE = 2  # 秒（指数バックオフの基底）
 
+    # WebRTC設定
+    ICE_SERVERS = [
+        {"urls": "stun:stun.l.google.com:19302"},
+        {"urls": "stun:stun1.l.google.com:19302"},
+        # TURN (外出先から使用する場合に必要)
+        # {"urls": "turn:your-turn-server:3478", "username": "user", "credential": "pass"}
+    ]
+    VIDEO_WIDTH = 640
+    VIDEO_HEIGHT = 480
+    VIDEO_FPS = 15
+    VIDEOCALL_RING_TIMEOUT = 30  # 着信タイムアウト（秒）
+
     # APIキー
     @classmethod
     def get_api_key(cls) -> str:

@@ -24,3 +24,7 @@ gpiozero
 
 # HTTP requests (Firebase)
 requests
+
+# WebRTC (Video calls)
+aiortc
+aiohttp

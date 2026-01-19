@@ -1,7 +1,7 @@
 """
 Core層
 
-音声処理、OpenAI Realtime API、Firebase連携
+音声処理、OpenAI Realtime API、Firebase連携、WebRTC
 """
 
 from .audio import (
@@ -13,6 +13,8 @@ from .audio import (
 )
 from .openai_realtime_client import OpenAIRealtimeClient
 from .firebase_voice import FirebaseVoiceMessenger
+from .firebase_signaling import FirebaseSignaling
+from .webrtc import VideoCallManager, get_video_call_manager, AIORTC_AVAILABLE
 
 __all__ = [
     'AudioHandler',
@@ -22,4 +24,8 @@ __all__ = [
     'generate_notification_sound',
     'OpenAIRealtimeClient',
     'FirebaseVoiceMessenger',
+    'FirebaseSignaling',
+    'VideoCallManager',
+    'get_video_call_manager',
+    'AIORTC_AVAILABLE',
 ]

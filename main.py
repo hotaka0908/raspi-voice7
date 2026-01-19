@@ -26,7 +26,10 @@ from core import (
     AudioHandler,
     OpenAIRealtimeClient,
     generate_startup_sound,
-    generate_notification_sound
+    generate_notification_sound,
+    FirebaseSignaling,
+    get_video_call_manager,
+    AIORTC_AVAILABLE,
 )
 from capabilities import (
     init_gmail,
@@ -41,6 +44,9 @@ from capabilities import (
     stop_lifelog_thread,
     set_firebase_messenger,
     set_play_audio_callback,
+    pause_lifelog,
+    resume_lifelog,
+    set_videocall_callbacks,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -82,11 +88,322 @@ button: Optional[object] = None
 is_recording = False
 audio_handler: Optional[AudioHandler] = None
 
+# ビデオ通話状態
+_signaling: Optional[FirebaseSignaling] = None
+_pending_incoming_call: Optional[dict] = None
+_openai_client: Optional[OpenAIRealtimeClient] = None
+
 
 def signal_handler(sig, frame):
     """終了シグナルハンドラ"""
     global running
     running = False
+
+
+# ========================================
+# ビデオ通話関連
+# ========================================
+
+def generate_ringtone() -> Optional[bytes]:
+    """着信音を生成"""
+    try:
+        sample_rate = 48000
+        duration = 0.3
+
+        samples = int(sample_rate * duration)
+        t = np.linspace(0, duration, samples, False)
+
+        # 440Hz + 880Hz のダブルトーン
+        tone = np.sin(2 * np.pi * 440 * t) * 0.3 + np.sin(2 * np.pi * 880 * t) * 0.2
+        envelope = np.ones(samples)
+        envelope[-int(samples * 0.1):] = np.linspace(1, 0, int(samples * 0.1))
+        sound = (tone * envelope * 32767).astype(np.int16)
+
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(sound.tobytes())
+
+        return wav_buffer.getvalue()
+    except Exception:
+        return None
+
+
+def start_videocall_from_raspi() -> bool:
+    """ラズパイからビデオ通話を発信"""
+    global _signaling
+
+    if not AIORTC_AVAILABLE or not _signaling:
+        logger.warning("ビデオ通話が利用できません")
+        return False
+
+    try:
+        loop = asyncio.get_event_loop()
+        future = asyncio.run_coroutine_threadsafe(
+            _start_outgoing_call(),
+            loop
+        )
+        return future.result(timeout=5)
+    except Exception as e:
+        logger.error(f"発信エラー: {e}")
+        return False
+
+
+async def _start_outgoing_call() -> bool:
+    """発信処理（非同期）"""
+    global _signaling, _openai_client
+
+    if not _signaling:
+        return False
+
+    try:
+        video_manager = get_video_call_manager()
+
+        # PeerConnection作成
+        if not await video_manager.create_peer_connection():
+            return False
+
+        # ICE候補送信コールバック設定
+        def on_ice_candidate(candidate):
+            if _signaling.current_session_id:
+                _signaling.send_ice_candidate(
+                    _signaling.current_session_id,
+                    candidate,
+                    is_caller=True
+                )
+
+        video_manager.on_ice_candidate = on_ice_candidate
+
+        # ローカルメディア開始（カメラ/マイク）
+        pause_lifelog()  # ライフログ一時停止
+        if not await video_manager.start_local_media():
+            resume_lifelog()
+            return False
+
+        # 発信セッション作成
+        session_id = _signaling.create_call()
+        if not session_id:
+            await video_manager.end_call()
+            resume_lifelog()
+            return False
+
+        # Offer作成・送信
+        offer = await video_manager.create_offer()
+        if not offer:
+            _signaling.end_call(session_id)
+            await video_manager.end_call()
+            resume_lifelog()
+            return False
+
+        _signaling.send_offer(session_id, offer)
+        logger.info(f"ビデオ通話発信: {session_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"発信エラー: {e}")
+        resume_lifelog()
+        return False
+
+
+def end_videocall() -> bool:
+    """ビデオ通話を終了"""
+    global _signaling
+
+    try:
+        video_manager = get_video_call_manager()
+
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(
+            video_manager.end_call(),
+            loop
+        )
+
+        if _signaling:
+            _signaling.end_call()
+
+        resume_lifelog()  # ライフログ再開
+        logger.info("ビデオ通話終了")
+        return True
+
+    except Exception as e:
+        logger.error(f"通話終了エラー: {e}")
+        return False
+
+
+def is_in_videocall() -> bool:
+    """通話中かどうか"""
+    video_manager = get_video_call_manager()
+    return video_manager.is_in_call
+
+
+def on_incoming_call(session_id: str, session: dict) -> None:
+    """着信コールバック"""
+    global _pending_incoming_call, audio_handler
+
+    logger.info(f"ビデオ通話着信: {session_id}")
+    _pending_incoming_call = {"session_id": session_id, "session": session}
+
+    # 着信音を鳴らす
+    if audio_handler:
+        ringtone = generate_ringtone()
+        if ringtone:
+            audio_handler.play_audio_buffer(ringtone)
+
+
+def on_answer_received(session_id: str, answer: dict) -> None:
+    """Answer受信コールバック"""
+    logger.info(f"Answer受信: {session_id}")
+
+    try:
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(
+            _handle_answer(answer),
+            loop
+        )
+    except Exception as e:
+        logger.error(f"Answer処理エラー: {e}")
+
+
+async def _handle_answer(answer: dict) -> None:
+    """Answer処理（非同期）"""
+    video_manager = get_video_call_manager()
+    await video_manager.handle_answer(answer)
+
+
+def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
+    """ICE候補受信コールバック"""
+    try:
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(
+            _handle_ice_candidate(candidate),
+            loop
+        )
+    except Exception as e:
+        logger.debug(f"ICE候補処理エラー: {e}")
+
+
+async def _handle_ice_candidate(candidate: dict) -> None:
+    """ICE候補処理（非同期）"""
+    video_manager = get_video_call_manager()
+    await video_manager.add_ice_candidate(candidate)
+
+
+def on_call_ended(session_id: str) -> None:
+    """通話終了コールバック"""
+    global _pending_incoming_call
+
+    logger.info(f"通話終了検出: {session_id}")
+    _pending_incoming_call = None
+
+    try:
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(
+            _cleanup_call(),
+            loop
+        )
+    except Exception as e:
+        logger.error(f"通話終了処理エラー: {e}")
+
+
+async def _cleanup_call() -> None:
+    """通話終了クリーンアップ"""
+    video_manager = get_video_call_manager()
+    await video_manager.end_call()
+    resume_lifelog()
+
+
+async def accept_incoming_call() -> bool:
+    """着信に応答"""
+    global _pending_incoming_call, _signaling
+
+    if not _pending_incoming_call or not _signaling:
+        return False
+
+    session_id = _pending_incoming_call["session_id"]
+    session = _pending_incoming_call["session"]
+    _pending_incoming_call = None
+
+    try:
+        video_manager = get_video_call_manager()
+
+        # 応答ステータス更新
+        _signaling.accept_call(session_id)
+
+        # PeerConnection作成
+        if not await video_manager.create_peer_connection():
+            return False
+
+        # ICE候補送信コールバック設定
+        def on_ice_candidate(candidate):
+            _signaling.send_ice_candidate(session_id, candidate, is_caller=False)
+
+        video_manager.on_ice_candidate = on_ice_candidate
+
+        # ローカルメディア開始
+        pause_lifelog()
+        if not await video_manager.start_local_media():
+            resume_lifelog()
+            return False
+
+        # Offer処理・Answer作成
+        offer = session.get("offer")
+        if not offer:
+            await video_manager.end_call()
+            resume_lifelog()
+            return False
+
+        answer = await video_manager.handle_offer(offer)
+        if not answer:
+            await video_manager.end_call()
+            resume_lifelog()
+            return False
+
+        # Answer送信
+        _signaling.send_answer(session_id, answer)
+        logger.info(f"着信応答完了: {session_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"着信応答エラー: {e}")
+        resume_lifelog()
+        return False
+
+
+def init_videocall() -> bool:
+    """ビデオ通話初期化"""
+    global _signaling
+
+    if not AIORTC_AVAILABLE:
+        logger.warning("aiortcがインストールされていません。ビデオ通話は無効です。")
+        return False
+
+    try:
+        _signaling = FirebaseSignaling(device_id="raspi")
+
+        # コールバック設定
+        _signaling.on_incoming_call = on_incoming_call
+        _signaling.on_answer_received = on_answer_received
+        _signaling.on_ice_candidate = on_ice_candidate_received
+        _signaling.on_call_ended = on_call_ended
+
+        # シグナリング監視開始
+        _signaling.start_listening()
+
+        # Capability用コールバック設定
+        set_videocall_callbacks(
+            start_callback=start_videocall_from_raspi,
+            end_callback=end_videocall,
+            is_in_call_callback=is_in_videocall
+        )
+
+        logger.info("ビデオ通話初期化完了")
+        return True
+
+    except Exception as e:
+        logger.error(f"ビデオ通話初期化エラー: {e}")
+        return False
 
 
 def convert_webm_to_wav(audio_data: bytes) -> Optional[bytes]:
@@ -281,13 +598,29 @@ def send_recorded_voice_message(client: OpenAIRealtimeClient) -> bool:
 
 async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHandler):
     """音声入力ループ"""
-    global running, button, is_recording
+    global running, button, is_recording, _pending_incoming_call
     chunk_count = 0
 
     while running:
+        # ビデオ通話中は音声入力を停止
+        if is_in_videocall():
+            await asyncio.sleep(0.1)
+            continue
+
         if Config.USE_BUTTON and button:
             if button.is_pressed:
                 if not is_recording:
+                    # 着信中なら応答
+                    if _pending_incoming_call:
+                        logger.info("=== ビデオ通話応答 ===")
+                        success = await accept_incoming_call()
+                        if success:
+                            logger.info("ビデオ通話接続成功")
+                        else:
+                            logger.warning("ビデオ通話接続失敗")
+                        await asyncio.sleep(0.5)
+                        continue
+
                     if client.needs_session_reset or not client.is_connected:
                         await asyncio.sleep(0.1)
                         continue
@@ -457,6 +790,9 @@ async def main_async():
         audio_handler.cleanup()
         stop_alarm_thread()
         stop_lifelog_thread()
+        # ビデオ通話クリーンアップ
+        if _signaling:
+            _signaling.stop_listening()
 
 
 def main():
@@ -488,6 +824,10 @@ def main():
     if firebase_ok:
         messenger = get_firebase_messenger()
         set_firebase_messenger(messenger)
+
+    # ビデオ通話初期化
+    videocall_ok = init_videocall()
+    print(f"ビデオ通話: {'有効' if videocall_ok else '無効'}")
 
     # アラーム読み込み
     load_alarms()

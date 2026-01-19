@@ -20,10 +20,15 @@ from .schedule import (
 from .memory import (
     MEMORY_CAPABILITIES,
     start_lifelog_thread, stop_lifelog_thread,
-    set_firebase_messenger, set_play_audio_callback
+    set_firebase_messenger, set_play_audio_callback,
+    pause_lifelog, resume_lifelog, is_lifelog_paused
 )
 from .search import SEARCH_CAPABILITIES
 from .calendar import CALENDAR_CAPABILITIES, init_calendar
+from .videocall import (
+    VIDEOCALL_CAPABILITIES,
+    set_videocall_callbacks
+)
 
 __all__ = [
     'Capability',
@@ -35,6 +40,7 @@ __all__ = [
     'COMMUNICATION_CAPABILITIES',
     'SCHEDULE_CAPABILITIES',
     'MEMORY_CAPABILITIES',
+    'VIDEOCALL_CAPABILITIES',
     'capture_image_raw',
     'init_gmail',
     'init_firebase',
@@ -47,7 +53,11 @@ __all__ = [
     'stop_lifelog_thread',
     'set_firebase_messenger',
     'set_play_audio_callback',
+    'pause_lifelog',
+    'resume_lifelog',
+    'is_lifelog_paused',
     'SEARCH_CAPABILITIES',
     'CALENDAR_CAPABILITIES',
     'init_calendar',
+    'set_videocall_callbacks',
 ]

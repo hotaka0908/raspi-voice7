@@ -17,6 +17,7 @@ class CapabilityCategory(Enum):
     COMMUNICATION = "送る"
     SCHEDULE = "覚える"
     MEMORY = "記録する"
+    CALL = "通話する"
 
 
 @dataclass
