@@ -264,6 +264,9 @@ class VideoCallManager:
         self._audio_output = None
         self._output_stream = None
 
+        # 保留中のICE候補（PC作成前に受信した場合）
+        self._pending_ice_candidates: list = []
+
     def _get_rtc_configuration(self) -> RTCConfiguration:
         """RTCConfiguration作成"""
         ice_servers = []
@@ -433,6 +436,9 @@ class VideoCallManager:
             )
             await self.pc.setRemoteDescription(rtc_offer)
 
+            # 保留中のICE候補を処理
+            await self._process_pending_ice_candidates()
+
             answer = await self.pc.createAnswer()
             await self.pc.setLocalDescription(answer)
 
@@ -472,7 +478,10 @@ class VideoCallManager:
     async def add_ice_candidate(self, candidate: Dict) -> bool:
         """ICE候補追加"""
         if not self.pc:
-            return False
+            # PeerConnectionがまだない場合はキューに追加
+            self._pending_ice_candidates.append(candidate)
+            logger.info(f"ICE候補をキューに追加（PC未作成）: {len(self._pending_ice_candidates)}件")
+            return True
 
         try:
             rtc_candidate = RTCIceCandidate(
@@ -486,9 +495,32 @@ class VideoCallManager:
             logger.debug(f"ICE候補追加エラー: {e}")
             return False
 
+    async def _process_pending_ice_candidates(self) -> None:
+        """保留中のICE候補を処理"""
+        if not self._pending_ice_candidates:
+            return
+
+        logger.info(f"保留中のICE候補を処理: {len(self._pending_ice_candidates)}件")
+        for candidate in self._pending_ice_candidates:
+            try:
+                rtc_candidate = RTCIceCandidate(
+                    sdpMid=candidate.get("sdpMid"),
+                    sdpMLineIndex=candidate.get("sdpMLineIndex"),
+                    candidate=candidate.get("candidate"),
+                )
+                await self.pc.addIceCandidate(rtc_candidate)
+                logger.info("保留ICE候補追加成功")
+            except Exception as e:
+                logger.debug(f"保留ICE候補追加エラー: {e}")
+
+        self._pending_ice_candidates.clear()
+
     async def end_call(self) -> None:
         """通話終了"""
         self.is_in_call = False
+
+        # 保留中のICE候補をクリア
+        self._pending_ice_candidates.clear()
 
         if self.video_track:
             await self.video_track.stop()
