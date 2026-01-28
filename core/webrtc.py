@@ -10,6 +10,7 @@ import logging
 import subprocess
 import io
 import wave
+import re
 import numpy as np
 from typing import Optional, Callable, Dict, Any
 from fractions import Fraction
@@ -17,6 +18,51 @@ from fractions import Fraction
 from config import Config
 
 logger = logging.getLogger("conversation")
+
+
+def parse_ice_candidate(candidate_str: str) -> Optional[Dict]:
+    """ICE候補文字列をパースしてaiortc用のパラメータを抽出
+
+    例: candidate:3490444625 1 udp 2113937151 192.168.11.2 54321 typ host ...
+    """
+    if not candidate_str:
+        return None
+
+    # "candidate:" プレフィックスを除去
+    if candidate_str.startswith("candidate:"):
+        candidate_str = candidate_str[10:]
+
+    parts = candidate_str.split()
+    if len(parts) < 8:
+        return None
+
+    try:
+        result = {
+            "foundation": parts[0],
+            "component": int(parts[1]),
+            "protocol": parts[2].lower(),
+            "priority": int(parts[3]),
+            "ip": parts[4],
+            "port": int(parts[5]),
+            # parts[6] は "typ"
+            "type": parts[7],
+        }
+
+        # オプションパラメータ
+        for i in range(8, len(parts) - 1, 2):
+            key = parts[i]
+            val = parts[i + 1]
+            if key == "raddr":
+                result["relatedAddress"] = val
+            elif key == "rport":
+                result["relatedPort"] = int(val)
+            elif key == "tcptype":
+                result["tcpType"] = val
+
+        return result
+    except (ValueError, IndexError) as e:
+        logger.debug(f"ICE候補パースエラー: {e}")
+        return None
 
 # aiortcのデバッグログを有効化
 logging.getLogger("aioice").setLevel(logging.DEBUG)
@@ -484,10 +530,25 @@ class VideoCallManager:
             return True
 
         try:
+            # ICE候補文字列をパース
+            parsed = parse_ice_candidate(candidate.get("candidate", ""))
+            if not parsed:
+                logger.debug("ICE候補パース失敗")
+                return False
+
             rtc_candidate = RTCIceCandidate(
+                foundation=parsed["foundation"],
+                component=parsed["component"],
+                protocol=parsed["protocol"],
+                priority=parsed["priority"],
+                ip=parsed["ip"],
+                port=parsed["port"],
+                type=parsed["type"],
+                relatedAddress=parsed.get("relatedAddress"),
+                relatedPort=parsed.get("relatedPort"),
+                tcpType=parsed.get("tcpType"),
                 sdpMid=candidate.get("sdpMid"),
                 sdpMLineIndex=candidate.get("sdpMLineIndex"),
-                candidate=candidate.get("candidate"),
             )
             await self.pc.addIceCandidate(rtc_candidate)
             return True
@@ -505,11 +566,26 @@ class VideoCallManager:
         fail_count = 0
         for candidate in self._pending_ice_candidates:
             try:
-                logger.info(f"ICE候補処理中: sdpMid={candidate.get('sdpMid')}, sdpMLineIndex={candidate.get('sdpMLineIndex')}")
+                candidate_str = candidate.get("candidate", "")
+                parsed = parse_ice_candidate(candidate_str)
+                if not parsed:
+                    fail_count += 1
+                    logger.warning(f"ICE候補パース失敗: {candidate_str[:50]}")
+                    continue
+
                 rtc_candidate = RTCIceCandidate(
+                    foundation=parsed["foundation"],
+                    component=parsed["component"],
+                    protocol=parsed["protocol"],
+                    priority=parsed["priority"],
+                    ip=parsed["ip"],
+                    port=parsed["port"],
+                    type=parsed["type"],
+                    relatedAddress=parsed.get("relatedAddress"),
+                    relatedPort=parsed.get("relatedPort"),
+                    tcpType=parsed.get("tcpType"),
                     sdpMid=candidate.get("sdpMid"),
                     sdpMLineIndex=candidate.get("sdpMLineIndex"),
-                    candidate=candidate.get("candidate"),
                 )
                 await self.pc.addIceCandidate(rtc_candidate)
                 success_count += 1
