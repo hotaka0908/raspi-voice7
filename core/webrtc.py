@@ -359,10 +359,16 @@ class VideoCallManager:
             async def on_ice_connection_state():
                 logger.info(f"ICE接続状態変更: {self.pc.iceConnectionState}")
 
+            @self.pc.on("icegatheringstatechange")
+            async def on_ice_gathering_state():
+                logger.info(f"ICE収集状態変更: {self.pc.iceGatheringState}")
+
             @self.pc.on("icecandidate")
             async def on_ice_candidate(candidate):
-                logger.info(f"ICE候補イベント: {candidate}")
-                if candidate and candidate.candidate and self.on_ice_candidate:
+                logger.info(f"ICE候補イベント発火: candidate={candidate}")
+                if candidate:
+                    logger.info(f"ICE候補詳細: candidate.candidate={getattr(candidate, 'candidate', None)}")
+                if candidate and hasattr(candidate, 'candidate') and candidate.candidate and self.on_ice_candidate:
                     logger.info(f"ICE候補送信: {candidate.candidate[:50]}...")
                     self.on_ice_candidate({
                         "candidate": candidate.candidate,
@@ -488,12 +494,22 @@ class VideoCallManager:
             answer = await self.pc.createAnswer()
             await self.pc.setLocalDescription(answer)
 
-            # Trickle ICE: Answer即送信（ICE候補はFirebase経由で別途送信）
-            logger.info("Answer作成完了（Trickle ICEモード）")
+            # ICE収集完了を待つ（候補はicecandidateイベントでも送信される）
+            logger.info(f"ICE収集開始: {self.pc.iceGatheringState}")
+            timeout = 5.0  # 最大5秒待機
+            elapsed = 0.0
+            while self.pc.iceGatheringState != "complete" and elapsed < timeout:
+                await asyncio.sleep(0.1)
+                elapsed += 0.1
+
+            logger.info(f"ICE収集完了/タイムアウト: {self.pc.iceGatheringState}, 経過={elapsed:.1f}秒")
+
+            # 最新のローカルSDP（ICE候補含む）を取得
+            local_desc = self.pc.localDescription
 
             return {
-                "type": answer.type,
-                "sdp": answer.sdp,
+                "type": local_desc.type,
+                "sdp": local_desc.sdp,
             }
         except Exception as e:
             logger.error(f"Offer処理エラー: {e}")
