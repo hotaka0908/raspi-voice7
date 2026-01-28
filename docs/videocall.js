@@ -58,6 +58,11 @@ class VideoCallManager {
 
                 const { caller, callee, status, offer } = session;
 
+                // デバッグ: 自分のセッションの状態を出力
+                if (sessionId === this.currentSessionId) {
+                    console.log(`セッション状態: id=${sessionId}, caller=${caller}, status=${status}, answer=${!!session.answer}, _answerProcessed=${this._answerProcessed}`)
+                }
+
                 // 着信検出（自分がcalleeで、calling状態、offerあり、未通知）
                 if (callee === this.deviceId && status === 'calling' && offer) {
                     if (!this._notifiedIncomingCalls.has(sessionId)) {
@@ -68,9 +73,10 @@ class VideoCallManager {
                     }
                 }
 
-                // 相手がAnswerを送った場合（自分がcaller）
-                if (caller === this.deviceId && session.answer && !this._answerProcessed) {
+                // 相手がAnswerを送った場合（自分がcaller、かつ現在のセッション）
+                if (sessionId === this.currentSessionId && caller === this.deviceId && session.answer && !this._answerProcessed) {
                     this._answerProcessed = true;
+                    console.log('Answer検出、処理開始:', sessionId);
                     // 非同期でanswerを処理し、完了後にICE候補も処理
                     this._handleAnswer(sessionId, session.answer, session, caller, callee);
                 }
