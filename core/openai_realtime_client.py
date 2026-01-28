@@ -260,6 +260,11 @@ class OpenAIRealtimeClient:
             if text:
                 logger.info(f"[USER] {text}")
 
+        # 入力音声トランスクリプト失敗
+        elif event_type == "conversation.item.input_audio_transcription.failed":
+            error = event.get("error", {})
+            logger.error(f"音声認識失敗: {error.get('message', 'Unknown error')}")
+
         # ツール呼び出し
         elif event_type == "response.function_call_arguments.done":
             call_id = event.get("call_id")
