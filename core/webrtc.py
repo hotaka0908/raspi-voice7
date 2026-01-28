@@ -127,10 +127,11 @@ class CameraVideoTrack(MediaStreamTrack):
             self._frame_count += 1
             return frame
 
-        # YUV420データを読み込み
+        # YUV420データを読み込み（非同期で実行）
         frame_size = Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 3 // 2
         try:
-            data = self._process.stdout.read(frame_size)
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, self._process.stdout.read, frame_size)
             if len(data) != frame_size:
                 await asyncio.sleep(0.01)
                 return await self.recv()
@@ -218,7 +219,12 @@ class AudioTrackFromDevice(MediaStreamTrack):
             return frame
 
         try:
-            data = self._stream.read(self._samples_per_frame, exception_on_overflow=False)
+            # 非同期で読み込み
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(
+                None,
+                lambda: self._stream.read(self._samples_per_frame, exception_on_overflow=False)
+            )
             audio_data = np.frombuffer(data, dtype=np.int16)
 
             frame = AudioFrame(format="s16", layout="mono", samples=len(audio_data))
