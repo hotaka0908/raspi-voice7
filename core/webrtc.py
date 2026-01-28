@@ -497,6 +497,13 @@ class VideoCallManager:
 
             # ICE候補が含まれたSDPを取得
             local_desc = self.pc.localDescription
+
+            # SDPからICE候補をログ出力（デバッグ用）
+            ice_lines = [line for line in local_desc.sdp.split('\n') if 'candidate' in line.lower()]
+            logger.info(f"Answer SDP内のICE候補数: {len(ice_lines)}")
+            for line in ice_lines[:5]:  # 最初の5つだけログ
+                logger.info(f"ラズパイICE候補: {line[:80]}")
+
             return {
                 "type": local_desc.type,
                 "sdp": local_desc.sdp,
