@@ -507,6 +507,10 @@ class VideoCallManager:
             # 最新のローカルSDP（ICE候補含む）を取得
             local_desc = self.pc.localDescription
 
+            # SDPからICE候補を抽出してFirebaseに送信（aiortcがicecandidateイベントを発火しないため）
+            if self.on_ice_candidate:
+                await self._send_ice_candidates_from_sdp(local_desc.sdp)
+
             return {
                 "type": local_desc.type,
                 "sdp": local_desc.sdp,
@@ -514,6 +518,34 @@ class VideoCallManager:
         except Exception as e:
             logger.error(f"Offer処理エラー: {e}")
             return None
+
+    async def _send_ice_candidates_from_sdp(self, sdp: str) -> None:
+        """SDPからICE候補を抽出してFirebaseに送信"""
+        lines = sdp.split('\n')
+        current_mid = None
+        current_mline_index = -1
+
+        for line in lines:
+            line = line.strip()
+            # メディアライン（m=audio, m=video）を追跡
+            if line.startswith('m='):
+                current_mline_index += 1
+                current_mid = str(current_mline_index)
+
+            # mid属性を取得
+            if line.startswith('a=mid:'):
+                current_mid = line[6:]
+
+            # ICE候補を抽出
+            if line.startswith('a=candidate:'):
+                candidate_str = line[2:]  # "a=" を除去
+                logger.info(f"SDP ICE候補送信: mid={current_mid}, index={current_mline_index}")
+                if self.on_ice_candidate:
+                    self.on_ice_candidate({
+                        "candidate": candidate_str,
+                        "sdpMid": current_mid,
+                        "sdpMLineIndex": current_mline_index,
+                    })
 
     async def handle_answer(self, answer: Dict) -> bool:
         """Answer SDPを処理"""
