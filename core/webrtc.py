@@ -47,6 +47,21 @@ except ImportError:
     class AudioFrame:
         def __init__(self, **kwargs): pass
 
+    class RTCConfiguration:
+        def __init__(self, **kwargs): pass
+
+    class RTCIceServer:
+        def __init__(self, **kwargs): pass
+
+    class RTCPeerConnection:
+        def __init__(self, **kwargs): pass
+
+    class RTCSessionDescription:
+        def __init__(self, **kwargs): pass
+
+    class RTCIceCandidate:
+        def __init__(self, **kwargs): pass
+
 
 class CameraVideoTrack(MediaStreamTrack):
     """Raspberry Piカメラからのビデオトラック"""
