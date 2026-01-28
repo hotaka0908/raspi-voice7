@@ -285,7 +285,11 @@ def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     elif _signaling and _signaling.current_session_id:
         current_session = _signaling.current_session_id
 
-    if current_session and session_id != current_session:
+    # アクティブなセッションがない場合は無視
+    if not current_session:
+        return
+
+    if session_id != current_session:
         # 異なるセッションのICE候補は無視
         return
 
