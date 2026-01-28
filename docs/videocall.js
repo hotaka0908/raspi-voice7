@@ -2,7 +2,11 @@
  * WebRTC Video Call Module
  *
  * スマホ側のWebRTCビデオ通話ロジック
- * Firebase経由でシグナリング、ラズパイと双方向通話
+ * Firebase経由でシグナリング、ラズパイと通話
+ *
+ * 構成:
+ * - ラズパイ: 映像送信のみ + 音声送受信
+ * - スマホ: 映像受信のみ + 音声送受信
  */
 
 // ICEサーバー設定
@@ -93,18 +97,15 @@ class VideoCallManager {
 
     /**
      * 発信（スマホ→ラズパイ）
+     * スマホは音声のみ送信、映像はラズパイから受信
      */
     async startCall() {
         try {
-            // ローカルメディア取得
+            // ローカルメディア取得（音声のみ）
             this.localStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: 640, height: 480 },
+                video: false,
                 audio: true
             });
-
-            if (this.onLocalStream) {
-                this.onLocalStream(this.localStream);
-            }
 
             // PeerConnection作成
             await this._createPeerConnection();
@@ -148,20 +149,17 @@ class VideoCallManager {
 
     /**
      * 着信応答
+     * スマホは音声のみ送信、映像はラズパイから受信
      */
     async acceptCall(sessionId, session) {
         try {
             this.currentSessionId = sessionId;
 
-            // ローカルメディア取得
+            // ローカルメディア取得（音声のみ）
             this.localStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: 640, height: 480 },
+                video: false,
                 audio: true
             });
-
-            if (this.onLocalStream) {
-                this.onLocalStream(this.localStream);
-            }
 
             // PeerConnection作成
             await this._createPeerConnection();
@@ -248,15 +246,10 @@ class VideoCallManager {
     }
 
     /**
-     * ビデオON/OFF
+     * ビデオON/OFF（スマホは映像送信しないため、ローカルビデオなし）
      */
     toggleVideo() {
-        if (!this.localStream) return false;
-        const videoTrack = this.localStream.getVideoTracks()[0];
-        if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled;
-            return videoTrack.enabled;
-        }
+        // スマホからは映像を送信しないため、この機能は無効
         return false;
     }
 

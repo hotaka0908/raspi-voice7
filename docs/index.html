@@ -533,18 +533,6 @@
             object-fit: cover;
         }
 
-        .videocall-overlay #localVideo {
-            position: absolute;
-            bottom: 100px;
-            right: 15px;
-            width: 100px;
-            height: 133px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid white;
-            background: #333;
-        }
-
         .videocall-controls {
             position: absolute;
             bottom: 30px;
@@ -721,13 +709,12 @@
     </div>
 
     <!-- ビデオ通話オーバーレイ -->
+    <!-- スマホは映像受信のみ、音声は双方向 -->
     <div class="videocall-overlay" id="videocallOverlay">
         <div class="video-container">
             <video id="remoteVideo" autoplay playsinline></video>
-            <video id="localVideo" autoplay playsinline muted></video>
             <div class="videocall-status" id="videocallStatus">接続中...</div>
             <div class="videocall-controls">
-                <button id="toggleVideoBtn">📹</button>
                 <button id="toggleAudioBtn">🎤</button>
                 <button id="endCallBtn" class="end-call">📞</button>
             </div>
@@ -1320,9 +1307,7 @@
         const videocallBtn = document.getElementById('videocallBtn');
         const videocallOverlay = document.getElementById('videocallOverlay');
         const remoteVideo = document.getElementById('remoteVideo');
-        const localVideo = document.getElementById('localVideo');
         const videocallStatus = document.getElementById('videocallStatus');
-        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
         const toggleAudioBtn = document.getElementById('toggleAudioBtn');
         const endCallBtn = document.getElementById('endCallBtn');
         const incomingCallOverlay = document.getElementById('incomingCallOverlay');
@@ -1331,7 +1316,6 @@
 
         let videoCallManager = null;
         let pendingIncomingCall = null;
-        let videoEnabled = true;
         let audioEnabled = true;
 
         // 着信音
@@ -1386,12 +1370,7 @@
                 startRingtone();
             };
 
-            // ローカルストリームコールバック
-            videoCallManager.onLocalStream = (stream) => {
-                localVideo.srcObject = stream;
-            };
-
-            // リモートストリームコールバック
+            // リモートストリームコールバック（ラズパイからの映像）
             videoCallManager.onRemoteStream = (stream) => {
                 remoteVideo.srcObject = stream;
             };
@@ -1431,7 +1410,6 @@
             videocallOverlay.classList.add('active');
             videocallStatus.style.display = 'block';
             videocallStatus.textContent = '接続中...';
-            videoEnabled = true;
             audioEnabled = true;
             toggleVideoBtn.classList.remove('off');
             toggleAudioBtn.classList.remove('off');
@@ -1441,7 +1419,6 @@
         function hideVideoCall() {
             videocallOverlay.classList.remove('active');
             remoteVideo.srcObject = null;
-            localVideo.srcObject = null;
         }
 
         // 発信ボタン
@@ -1498,13 +1475,6 @@
                 await videoCallManager.endCall();
             }
             hideVideoCall();
-        });
-
-        // ビデオON/OFFボタン
-        toggleVideoBtn.addEventListener('click', () => {
-            if (!videoCallManager) return;
-            videoEnabled = videoCallManager.toggleVideo();
-            toggleVideoBtn.classList.toggle('off', !videoEnabled);
         });
 
         // オーディオON/OFFボタン
