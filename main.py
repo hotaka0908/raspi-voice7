@@ -276,6 +276,19 @@ async def _handle_answer(answer: dict) -> None:
 
 def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     """ICE候補受信コールバック"""
+    global _pending_incoming_call, _signaling
+
+    # セッションIDが現在のセッションと一致するか確認
+    current_session = None
+    if _pending_incoming_call:
+        current_session = _pending_incoming_call.get("session_id")
+    elif _signaling and _signaling.current_session_id:
+        current_session = _signaling.current_session_id
+
+    if current_session and session_id != current_session:
+        # 異なるセッションのICE候補は無視
+        return
+
     logger.info(f"ICE候補受信: {candidate.get('candidate', '')[:50]}...")
     try:
         if _main_loop is None:
