@@ -501,17 +501,22 @@ class VideoCallManager:
             return
 
         logger.info(f"保留中のICE候補を処理: {len(self._pending_ice_candidates)}件")
+        success_count = 0
+        fail_count = 0
         for candidate in self._pending_ice_candidates:
             try:
+                logger.info(f"ICE候補処理中: sdpMid={candidate.get('sdpMid')}, sdpMLineIndex={candidate.get('sdpMLineIndex')}")
                 rtc_candidate = RTCIceCandidate(
                     sdpMid=candidate.get("sdpMid"),
                     sdpMLineIndex=candidate.get("sdpMLineIndex"),
                     candidate=candidate.get("candidate"),
                 )
                 await self.pc.addIceCandidate(rtc_candidate)
-                logger.info("保留ICE候補追加成功")
+                success_count += 1
             except Exception as e:
-                logger.debug(f"保留ICE候補追加エラー: {e}")
+                fail_count += 1
+                logger.warning(f"保留ICE候補追加エラー: {e}")
+        logger.info(f"保留ICE候補処理完了: 成功={success_count}, 失敗={fail_count}")
 
         self._pending_ice_candidates.clear()
 
