@@ -488,25 +488,12 @@ class VideoCallManager:
             answer = await self.pc.createAnswer()
             await self.pc.setLocalDescription(answer)
 
-            # ICE収集完了を待つ
-            while self.pc.iceGatheringState != "complete":
-                logger.info(f"ICE収集中: {self.pc.iceGatheringState}")
-                await asyncio.sleep(0.1)
-
-            logger.info("ICE収集完了")
-
-            # ICE候補が含まれたSDPを取得
-            local_desc = self.pc.localDescription
-
-            # SDPからICE候補をログ出力（デバッグ用）
-            ice_lines = [line for line in local_desc.sdp.split('\n') if 'candidate' in line.lower()]
-            logger.info(f"Answer SDP内のICE候補数: {len(ice_lines)}")
-            for line in ice_lines[:5]:  # 最初の5つだけログ
-                logger.info(f"ラズパイICE候補: {line[:80]}")
+            # Trickle ICE: Answer即送信（ICE候補はFirebase経由で別途送信）
+            logger.info("Answer作成完了（Trickle ICEモード）")
 
             return {
-                "type": local_desc.type,
-                "sdp": local_desc.sdp,
+                "type": answer.type,
+                "sdp": answer.sdp,
             }
         except Exception as e:
             logger.error(f"Offer処理エラー: {e}")
