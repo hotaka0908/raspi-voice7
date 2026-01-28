@@ -120,7 +120,7 @@ class FirebaseSignaling:
         response = requests.put(url, json=status)
         return response.status_code == 200
 
-    def start_listening(self, poll_interval: float = 0.5) -> None:
+    def start_listening(self) -> None:
         """シグナリングイベント監視開始"""
         self.running = True
         self._last_seen_sessions = set()
@@ -129,17 +129,26 @@ class FirebaseSignaling:
         self._last_answer = {}
         self._last_offer = {}
 
+        # 動的ポーリング間隔
+        self._idle_interval = 2.0      # 待機中: 2秒
+        self._active_interval = 0.3    # 通話中: 0.3秒
+
         def poll_loop():
             while self.running:
                 try:
                     self._poll_signals()
                 except Exception as e:
                     logger.debug(f"シグナリングポーリングエラー: {e}")
-                time.sleep(poll_interval)
+
+                # 通話中は高速ポーリング、待機中は低速ポーリング
+                if self.current_session_id:
+                    time.sleep(self._active_interval)
+                else:
+                    time.sleep(self._idle_interval)
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()
-        logger.info("シグナリング監視開始")
+        logger.info(f"シグナリング監視開始（待機: {self._idle_interval}秒, 通話中: {self._active_interval}秒）")
 
     def stop_listening(self) -> None:
         """監視停止"""
