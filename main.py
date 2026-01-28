@@ -382,7 +382,7 @@ async def accept_incoming_call() -> bool:
 
 _main_loop = None  # メインイベントループの参照
 
-def init_videocall() -> bool:
+def init_videocall(loop=None) -> bool:
     """ビデオ通話初期化"""
     global _signaling, _main_loop
 
@@ -391,8 +391,8 @@ def init_videocall() -> bool:
         return False
 
     try:
-        # メインイベントループを保存
-        _main_loop = asyncio.get_event_loop()
+        # メインイベントループを保存（引数で渡されたループを使用）
+        _main_loop = loop or asyncio.get_running_loop()
 
         _signaling = FirebaseSignaling(device_id="raspi")
 
@@ -694,6 +694,11 @@ async def main_async():
     """非同期メインループ"""
     global running, button, audio_handler
 
+    # ビデオ通話初期化（正しいイベントループで）
+    loop = asyncio.get_running_loop()
+    videocall_ok = init_videocall(loop)
+    print(f"ビデオ通話: {'有効' if videocall_ok else '無効'}")
+
     audio_handler = AudioHandler()
     audio_handler.start_output_stream()
 
@@ -839,9 +844,8 @@ def main():
         messenger = get_firebase_messenger()
         set_firebase_messenger(messenger)
 
-    # ビデオ通話初期化
-    videocall_ok = init_videocall()
-    print(f"ビデオ通話: {'有効' if videocall_ok else '無効'}")
+    # ビデオ通話初期化（asyncio.run内で行う）
+    # init_videocallはmain_async内で呼び出す
 
     # アラーム読み込み
     load_alarms()
