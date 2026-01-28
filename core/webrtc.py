@@ -296,7 +296,8 @@ class VideoCallManager:
             @self.pc.on("connectionstatechange")
             async def on_connection_state():
                 state = self.pc.connectionState
-                logger.info(f"接続状態: {state}")
+                ice_state = self.pc.iceConnectionState
+                logger.info(f"接続状態: {state}, ICE状態: {ice_state}")
                 if self.on_connection_state_change:
                     self.on_connection_state_change(state)
 
@@ -304,6 +305,10 @@ class VideoCallManager:
                     self.is_in_call = True
                 elif state in ("failed", "closed", "disconnected"):
                     self.is_in_call = False
+
+            @self.pc.on("iceconnectionstatechange")
+            async def on_ice_connection_state():
+                logger.info(f"ICE接続状態変更: {self.pc.iceConnectionState}")
 
             @self.pc.on("icecandidate")
             async def on_ice_candidate(candidate):
