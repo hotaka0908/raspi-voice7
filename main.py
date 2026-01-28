@@ -274,6 +274,7 @@ async def _handle_answer(answer: dict) -> None:
 
 def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     """ICE候補受信コールバック"""
+    logger.info(f"ICE候補受信: {candidate.get('candidate', '')[:50]}...")
     try:
         loop = asyncio.get_event_loop()
         asyncio.run_coroutine_threadsafe(
@@ -281,13 +282,14 @@ def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
             loop
         )
     except Exception as e:
-        logger.debug(f"ICE候補処理エラー: {e}")
+        logger.error(f"ICE候補処理エラー: {e}")
 
 
 async def _handle_ice_candidate(candidate: dict) -> None:
     """ICE候補処理（非同期）"""
     video_manager = get_video_call_manager()
-    await video_manager.add_ice_candidate(candidate)
+    result = await video_manager.add_ice_candidate(candidate)
+    logger.info(f"ICE候補追加結果: {result}")
 
 
 def on_call_ended(session_id: str) -> None:
