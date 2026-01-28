@@ -214,11 +214,11 @@ def end_videocall() -> bool:
     try:
         video_manager = get_video_call_manager()
 
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(
-            video_manager.end_call(),
-            loop
-        )
+        if _main_loop:
+            asyncio.run_coroutine_threadsafe(
+                video_manager.end_call(),
+                _main_loop
+            )
 
         if _signaling:
             _signaling.end_call()
@@ -257,10 +257,12 @@ def on_answer_received(session_id: str, answer: dict) -> None:
     logger.info(f"Answer受信: {session_id}")
 
     try:
-        loop = asyncio.get_event_loop()
+        if _main_loop is None:
+            logger.error("メインイベントループが未設定")
+            return
         asyncio.run_coroutine_threadsafe(
             _handle_answer(answer),
-            loop
+            _main_loop
         )
     except Exception as e:
         logger.error(f"Answer処理エラー: {e}")
@@ -276,10 +278,12 @@ def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     """ICE候補受信コールバック"""
     logger.info(f"ICE候補受信: {candidate.get('candidate', '')[:50]}...")
     try:
-        loop = asyncio.get_event_loop()
+        if _main_loop is None:
+            logger.error("メインイベントループが未設定")
+            return
         asyncio.run_coroutine_threadsafe(
             _handle_ice_candidate(candidate),
-            loop
+            _main_loop
         )
     except Exception as e:
         logger.error(f"ICE候補処理エラー: {e}")
@@ -300,10 +304,12 @@ def on_call_ended(session_id: str) -> None:
     _pending_incoming_call = None
 
     try:
-        loop = asyncio.get_event_loop()
+        if _main_loop is None:
+            logger.error("メインイベントループが未設定")
+            return
         asyncio.run_coroutine_threadsafe(
             _cleanup_call(),
-            loop
+            _main_loop
         )
     except Exception as e:
         logger.error(f"通話終了処理エラー: {e}")
@@ -374,15 +380,20 @@ async def accept_incoming_call() -> bool:
         return False
 
 
+_main_loop = None  # メインイベントループの参照
+
 def init_videocall() -> bool:
     """ビデオ通話初期化"""
-    global _signaling
+    global _signaling, _main_loop
 
     if not AIORTC_AVAILABLE:
         logger.warning("aiortcがインストールされていません。ビデオ通話は無効です。")
         return False
 
     try:
+        # メインイベントループを保存
+        _main_loop = asyncio.get_event_loop()
+
         _signaling = FirebaseSignaling(device_id="raspi")
 
         # コールバック設定
