@@ -421,9 +421,18 @@ class VideoCallManager:
             answer = await self.pc.createAnswer()
             await self.pc.setLocalDescription(answer)
 
+            # ICE収集完了を待つ
+            while self.pc.iceGatheringState != "complete":
+                logger.info(f"ICE収集中: {self.pc.iceGatheringState}")
+                await asyncio.sleep(0.1)
+
+            logger.info("ICE収集完了")
+
+            # ICE候補が含まれたSDPを取得
+            local_desc = self.pc.localDescription
             return {
-                "type": answer.type,
-                "sdp": answer.sdp,
+                "type": local_desc.type,
+                "sdp": local_desc.sdp,
             }
         except Exception as e:
             logger.error(f"Offer処理エラー: {e}")
