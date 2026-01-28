@@ -18,6 +18,10 @@ from config import Config
 
 logger = logging.getLogger("conversation")
 
+# aiortcのデバッグログを有効化
+logging.getLogger("aioice").setLevel(logging.DEBUG)
+logging.getLogger("aiortc").setLevel(logging.DEBUG)
+
 # aiortcのインポート（インストールされていない場合のフォールバック）
 try:
     from aiortc import (
