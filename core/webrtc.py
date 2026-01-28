@@ -482,11 +482,16 @@ class VideoCallManager:
             return None
 
         try:
+            # Offer SDPをログに出力（最初の10行）
+            offer_lines = offer["sdp"].split('\n')[:10]
+            logger.info(f"受信Offer SDP（先頭）:\n" + '\n'.join(offer_lines))
+
             rtc_offer = RTCSessionDescription(
                 sdp=offer["sdp"],
                 type=offer["type"]
             )
             await self.pc.setRemoteDescription(rtc_offer)
+            logger.info("setRemoteDescription完了")
 
             # 保留中のICE候補を処理
             await self._process_pending_ice_candidates()
@@ -506,6 +511,14 @@ class VideoCallManager:
 
             # 最新のローカルSDP（ICE候補含む）を取得
             local_desc = self.pc.localDescription
+
+            # Answer SDPをログに出力（最初の15行）
+            answer_lines = local_desc.sdp.split('\n')[:15]
+            logger.info(f"生成Answer SDP（先頭）:\n" + '\n'.join(answer_lines))
+
+            # ICE候補の数をカウント
+            ice_count = local_desc.sdp.count('a=candidate:')
+            logger.info(f"Answer SDPに含まれるICE候補数: {ice_count}")
 
             # SDPからICE候補を抽出してFirebaseに送信（aiortcがicecandidateイベントを発火しないため）
             if self.on_ice_candidate:
@@ -539,7 +552,7 @@ class VideoCallManager:
             # ICE候補を抽出
             if line.startswith('a=candidate:'):
                 candidate_str = line[2:]  # "a=" を除去
-                logger.info(f"SDP ICE候補送信: mid={current_mid}, index={current_mline_index}")
+                logger.info(f"SDP ICE候補送信: mid={current_mid}, index={current_mline_index}, candidate={candidate_str[:60]}...")
                 if self.on_ice_candidate:
                     self.on_ice_candidate({
                         "candidate": candidate_str,
@@ -565,17 +578,26 @@ class VideoCallManager:
 
     async def add_ice_candidate(self, candidate: Dict) -> bool:
         """ICE候補追加"""
+        candidate_str = candidate.get("candidate", "")
+        logger.info(f"ICE候補追加試行: {candidate_str[:60]}...")
+
         if not self.pc:
             # PeerConnectionがまだない場合はキューに追加
             self._pending_ice_candidates.append(candidate)
             logger.info(f"ICE候補をキューに追加（PC未作成）: {len(self._pending_ice_candidates)}件")
             return True
 
+        # remoteDescriptionが設定されているか確認
+        if not self.pc.remoteDescription:
+            self._pending_ice_candidates.append(candidate)
+            logger.info(f"ICE候補をキューに追加（remoteDescription未設定）: {len(self._pending_ice_candidates)}件")
+            return True
+
         try:
             # ICE候補文字列をパース
-            parsed = parse_ice_candidate(candidate.get("candidate", ""))
+            parsed = parse_ice_candidate(candidate_str)
             if not parsed:
-                logger.debug("ICE候補パース失敗")
+                logger.warning(f"ICE候補パース失敗: {candidate_str}")
                 return False
 
             rtc_candidate = RTCIceCandidate(
@@ -593,9 +615,10 @@ class VideoCallManager:
                 sdpMLineIndex=candidate.get("sdpMLineIndex"),
             )
             await self.pc.addIceCandidate(rtc_candidate)
+            logger.info(f"ICE候補追加成功: {parsed['ip']}:{parsed['port']} ({parsed['type']})")
             return True
         except Exception as e:
-            logger.debug(f"ICE候補追加エラー: {e}")
+            logger.warning(f"ICE候補追加エラー: {e}")
             return False
 
     async def _process_pending_ice_candidates(self) -> None:

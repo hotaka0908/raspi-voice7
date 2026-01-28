@@ -71,10 +71,11 @@ class VideoCallManager {
                 // 相手がAnswerを送った場合（自分がcaller）
                 if (caller === this.deviceId && session.answer && !this._answerProcessed) {
                     this._answerProcessed = true;
-                    this._handleAnswer(sessionId, session.answer);
+                    // 非同期でanswerを処理し、完了後にICE候補も処理
+                    this._handleAnswer(sessionId, session.answer, session, caller, callee);
                 }
 
-                // ICE候補受信
+                // ICE候補受信（remoteDescriptionが設定された後のみ処理）
                 this._processIceCandidates(sessionId, session, caller, callee);
 
                 // 通話終了検出
@@ -306,9 +307,30 @@ class VideoCallManager {
             }
         };
 
+        // ICE接続状態変更（重要：checking→connected の遷移を監視）
+        this.pc.oniceconnectionstatechange = () => {
+            const state = this.pc.iceConnectionState;
+            console.log('ICE接続状態:', state);
+
+            if (state === 'failed') {
+                console.error('ICE接続失敗！NATトラバーサルに問題がある可能性があります。');
+            }
+        };
+
+        // ICE収集状態変更
+        this.pc.onicegatheringstatechange = () => {
+            console.log('ICE収集状態:', this.pc.iceGatheringState);
+        };
+
+        // ICE候補エラー
+        this.pc.onicecandidateerror = (event) => {
+            console.error('ICE候補エラー:', event.errorCode, event.errorText, event.url);
+        };
+
         // ICE候補
         this.pc.onicecandidate = async (event) => {
             if (event.candidate && this.currentSessionId) {
+                console.log('ローカルICE候補生成:', event.candidate.candidate?.substring(0, 60));
                 const { ref, push } = window.firebaseFunctions;
                 const path = this.deviceId === 'phone' ? 'caller_candidates' : 'callee_candidates';
                 await push(ref(this.db, `videocall/${this.currentSessionId}/${path}`), {
@@ -316,6 +338,9 @@ class VideoCallManager {
                     sdpMid: event.candidate.sdpMid,
                     sdpMLineIndex: event.candidate.sdpMLineIndex
                 });
+                console.log('ICE候補をFirebaseに送信:', path);
+            } else if (!event.candidate) {
+                console.log('ICE収集完了（end-of-candidates）');
             }
         };
 
@@ -336,7 +361,7 @@ class VideoCallManager {
     /**
      * Answer処理
      */
-    async _handleAnswer(sessionId, answer) {
+    async _handleAnswer(sessionId, answer, session, caller, callee) {
         if (!this.pc) return;
 
         try {
@@ -345,6 +370,13 @@ class VideoCallManager {
                 sdp: answer.sdp
             }));
             console.log('Answer受信・設定完了');
+            console.log(`ICE接続状態: ${this.pc.iceConnectionState}`);
+
+            // setRemoteDescription完了後、ICE候補を処理
+            if (session) {
+                console.log('Answer処理完了後、ICE候補を処理');
+                await this._processIceCandidates(sessionId, session, caller, callee);
+            }
         } catch (error) {
             console.error('Answer処理エラー:', error);
         }
@@ -356,9 +388,19 @@ class VideoCallManager {
     async _processIceCandidates(sessionId, session, caller, callee) {
         if (!this.pc || sessionId !== this.currentSessionId) return;
 
+        // remoteDescriptionが設定されていない場合はスキップ
+        // （answerがsetRemoteDescriptionで処理された後に再度呼ばれる）
+        if (!this.pc.remoteDescription) {
+            console.log('remoteDescriptionが未設定、ICE候補処理をスキップ');
+            return;
+        }
+
         // 相手のICE候補を取得
         const candidatesPath = caller === this.deviceId ? 'callee_candidates' : 'caller_candidates';
         const candidates = session[candidatesPath];
+
+        console.log(`ICE候補チェック: path=${candidatesPath}, candidates=`, candidates);
+        console.log(`ICE接続状態: ${this.pc.iceConnectionState}, 接続状態: ${this.pc.connectionState}`);
 
         if (!candidates || typeof candidates !== 'object') return;
 
@@ -370,15 +412,17 @@ class VideoCallManager {
             if (this._processedCandidates.has(id)) continue;
             this._processedCandidates.add(id);
 
+            console.log('ラズパイICE候補受信:', candidate);
+
             try {
                 await this.pc.addIceCandidate(new RTCIceCandidate({
                     candidate: candidate.candidate,
                     sdpMid: candidate.sdpMid,
                     sdpMLineIndex: candidate.sdpMLineIndex
                 }));
-                console.log('ICE候補追加');
+                console.log('ラズパイICE候補追加成功:', candidate.candidate?.substring(0, 50));
             } catch (error) {
-                console.log('ICE候補追加エラー:', error);
+                console.log('ICE候補追加エラー:', error, candidate);
             }
         }
     }

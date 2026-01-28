@@ -120,7 +120,7 @@ class FirebaseSignaling:
         response = requests.put(url, json=status)
         return response.status_code == 200
 
-    def start_listening(self, poll_interval: float = 1.0) -> None:
+    def start_listening(self, poll_interval: float = 0.3) -> None:
         """シグナリングイベント監視開始"""
         self.running = True
         self._last_seen_sessions = set()
