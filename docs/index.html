@@ -1411,7 +1411,6 @@
             videocallStatus.style.display = 'block';
             videocallStatus.textContent = '接続中...';
             audioEnabled = true;
-            toggleVideoBtn.classList.remove('off');
             toggleAudioBtn.classList.remove('off');
         }
 
@@ -1423,8 +1422,9 @@
 
         // 発信ボタン
         videocallBtn.addEventListener('click', async () => {
+            console.log('videocallBtn clicked, videoCallManager:', videoCallManager);
             if (!videoCallManager) {
-                alert('ビデオ通話の初期化に失敗しました');
+                alert('ビデオ通話の初期化に失敗しました。VideoCallManager: ' + (window.VideoCallManager ? 'loaded' : 'not loaded'));
                 return;
             }
 
@@ -1433,7 +1433,7 @@
                 await videoCallManager.startCall();
             } catch (error) {
                 console.error('発信エラー:', error);
-                alert('発信に失敗しました');
+                alert('発信に失敗しました: ' + error.message);
                 hideVideoCall();
             }
         });

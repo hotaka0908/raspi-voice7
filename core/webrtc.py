@@ -297,7 +297,9 @@ class VideoCallManager:
 
             @self.pc.on("icecandidate")
             async def on_ice_candidate(candidate):
-                if candidate and self.on_ice_candidate:
+                logger.info(f"ICE候補イベント: {candidate}")
+                if candidate and candidate.candidate and self.on_ice_candidate:
+                    logger.info(f"ICE候補送信: {candidate.candidate[:50]}...")
                     self.on_ice_candidate({
                         "candidate": candidate.candidate,
                         "sdpMid": candidate.sdpMid,

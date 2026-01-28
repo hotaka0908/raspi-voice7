@@ -101,11 +101,29 @@ class VideoCallManager {
      */
     async startCall() {
         try {
+            // セッション作成（先にFirebaseに書き込み）
+            const sessionId = `${this.deviceId}_${Date.now()}`;
+            this.currentSessionId = sessionId;
+            this._answerProcessed = false;
+
+            const { ref, set } = window.firebaseFunctions;
+
+            console.log('セッション作成開始:', sessionId);
+            await set(ref(this.db, `videocall/${sessionId}`), {
+                caller: this.deviceId,
+                callee: this.calleeId,
+                status: 'initializing',
+                created_at: Date.now()
+            });
+            console.log('セッション作成完了');
+
             // ローカルメディア取得（音声のみ）
+            console.log('マイク取得開始');
             this.localStream = await navigator.mediaDevices.getUserMedia({
                 video: false,
                 audio: true
             });
+            console.log('マイク取得完了');
 
             // PeerConnection作成
             await this._createPeerConnection();
@@ -115,17 +133,10 @@ class VideoCallManager {
                 this.pc.addTrack(track, this.localStream);
             });
 
-            // セッション作成
-            const sessionId = `${this.deviceId}_${Date.now()}`;
-            this.currentSessionId = sessionId;
-            this._answerProcessed = false;
-
-            const { ref, set } = window.firebaseFunctions;
-            await set(ref(this.db, `videocall/${sessionId}`), {
-                caller: this.deviceId,
-                callee: this.calleeId,
-                status: 'calling',
-                created_at: Date.now()
+            // ステータスを'calling'に更新
+            const { update } = window.firebaseFunctions;
+            await update(ref(this.db, `videocall/${sessionId}`), {
+                status: 'calling'
             });
 
             // Offer作成・送信
@@ -273,6 +284,9 @@ class VideoCallManager {
         this.pc = new RTCPeerConnection({
             iceServers: ICE_SERVERS
         });
+
+        // 映像受信のみのトランシーバーを追加（ラズパイからの映像を受信）
+        this.pc.addTransceiver('video', { direction: 'recvonly' });
 
         // 接続状態変更
         this.pc.onconnectionstatechange = () => {

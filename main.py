@@ -337,6 +337,7 @@ async def accept_incoming_call() -> bool:
 
         # ICE候補送信コールバック設定
         def on_ice_candidate(candidate):
+            logger.info(f"ICE候補をFirebaseに送信: {candidate.get('candidate', '')[:50]}...")
             _signaling.send_ice_candidate(session_id, candidate, is_caller=False)
 
         video_manager.on_ice_candidate = on_ice_candidate
