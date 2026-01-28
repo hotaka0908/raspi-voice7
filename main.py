@@ -239,17 +239,23 @@ def is_in_videocall() -> bool:
 
 
 def on_incoming_call(session_id: str, session: dict) -> None:
-    """着信コールバック"""
+    """着信コールバック - ビデオ通話を自動応答"""
     global _pending_incoming_call, audio_handler
 
     logger.info(f"ビデオ通話着信: {session_id}")
     _pending_incoming_call = {"session_id": session_id, "session": session}
 
-    # 着信音を鳴らす
-    if audio_handler:
-        ringtone = generate_ringtone()
-        if ringtone:
-            audio_handler.play_audio_buffer(ringtone)
+    # 自動応答（ボタンを押す必要なし）
+    try:
+        if _main_loop is None:
+            logger.error("メインイベントループが未設定")
+            return
+        asyncio.run_coroutine_threadsafe(
+            accept_incoming_call(),
+            _main_loop
+        )
+    except Exception as e:
+        logger.error(f"自動応答エラー: {e}")
 
 
 def on_answer_received(session_id: str, answer: dict) -> None:
@@ -337,11 +343,23 @@ async def _cleanup_call() -> None:
     video_manager = get_video_call_manager()
     await video_manager.end_call()
     resume_lifelog()
+    _restart_audio_handler()
+
+
+def _restart_audio_handler() -> None:
+    """メインオーディオストリームを再開"""
+    global audio_handler
+    if audio_handler:
+        try:
+            audio_handler.start_output_stream()
+            logger.info("メインオーディオストリーム再開")
+        except Exception as e:
+            logger.error(f"オーディオストリーム再開エラー: {e}")
 
 
 async def accept_incoming_call() -> bool:
     """着信に応答"""
-    global _pending_incoming_call, _signaling
+    global _pending_incoming_call, _signaling, audio_handler
 
     if not _pending_incoming_call or not _signaling:
         return False
@@ -350,14 +368,23 @@ async def accept_incoming_call() -> bool:
     session = _pending_incoming_call["session"]
     _pending_incoming_call = None
 
+    logger.info("=== ビデオ通話応答 ===")
+
     try:
         video_manager = get_video_call_manager()
+
+        # メインオーディオストリームを停止（デバイス競合回避）
+        if audio_handler:
+            audio_handler.stop_output_stream()
+            audio_handler.stop_input_stream()
+            logger.info("メインオーディオストリーム停止")
 
         # 応答ステータス更新
         _signaling.accept_call(session_id)
 
         # PeerConnection作成
         if not await video_manager.create_peer_connection():
+            _restart_audio_handler()
             return False
 
         # ICE候補送信コールバック設定
@@ -371,6 +398,7 @@ async def accept_incoming_call() -> bool:
         pause_lifelog()
         if not await video_manager.start_local_media():
             resume_lifelog()
+            _restart_audio_handler()
             return False
 
         # Offer処理・Answer作成
@@ -378,22 +406,26 @@ async def accept_incoming_call() -> bool:
         if not offer:
             await video_manager.end_call()
             resume_lifelog()
+            _restart_audio_handler()
             return False
 
         answer = await video_manager.handle_offer(offer)
         if not answer:
             await video_manager.end_call()
             resume_lifelog()
+            _restart_audio_handler()
             return False
 
         # Answer送信
         _signaling.send_answer(session_id, answer)
         logger.info(f"着信応答完了: {session_id}")
+        logger.info("ビデオ通話接続成功")
         return True
 
     except Exception as e:
         logger.error(f"着信応答エラー: {e}")
         resume_lifelog()
+        _restart_audio_handler()
         return False
 
 
