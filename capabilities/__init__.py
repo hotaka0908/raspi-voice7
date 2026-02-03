@@ -7,7 +7,10 @@ Capability層
 from .base import Capability, CapabilityCategory, CapabilityResult
 from .executor import CapabilityExecutor, get_executor
 
-from .vision import VISION_CAPABILITIES, capture_image_raw
+from .vision import (
+    VISION_CAPABILITIES, capture_image_raw,
+    get_last_capture, clear_last_capture
+)
 from .communication import (
     COMMUNICATION_CAPABILITIES,
     init_gmail, init_firebase, get_firebase_messenger
@@ -29,6 +32,7 @@ from .videocall import (
     VIDEOCALL_CAPABILITIES,
     set_videocall_callbacks
 )
+from .detail_info import DETAIL_INFO_CAPABILITIES
 
 __all__ = [
     'Capability',
@@ -41,7 +45,10 @@ __all__ = [
     'SCHEDULE_CAPABILITIES',
     'MEMORY_CAPABILITIES',
     'VIDEOCALL_CAPABILITIES',
+    'DETAIL_INFO_CAPABILITIES',
     'capture_image_raw',
+    'get_last_capture',
+    'clear_last_capture',
     'init_gmail',
     'init_firebase',
     'get_firebase_messenger',

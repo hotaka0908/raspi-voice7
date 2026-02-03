@@ -234,3 +234,47 @@ class FirebaseVoiceMessenger:
         self.running = False
         if self.listener_thread:
             self.listener_thread.join(timeout=5)
+
+    def send_detail_info(self, image_data: bytes, brief_analysis: str,
+                         detail_analysis: str, original_prompt: str) -> bool:
+        """詳細情報をFirebaseに送信
+
+        Args:
+            image_data: 画像バイナリ
+            brief_analysis: 簡潔な分析結果
+            detail_analysis: 詳細な分析結果（Markdown形式）
+            original_prompt: 元の質問
+
+        Returns:
+            成功時True
+        """
+        timestamp = int(time.time() * 1000)
+        filename = f"{self.device_id}_{timestamp}.jpg"
+
+        # 1. Storage: /detail_photos/{filename} に画像保存
+        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
+        encoded_path = requests.utils.quote(f"detail_photos/{filename}", safe='')
+        upload_url = f"{storage_url}/{encoded_path}"
+
+        headers = {"Content-Type": "image/jpeg"}
+        response = requests.post(upload_url, headers=headers, data=image_data)
+
+        if response.status_code != 200:
+            return False
+
+        image_url = f"{storage_url}/{encoded_path}?alt=media"
+
+        # 2. Realtime DB: /detail_info に詳細情報保存
+        detail_data = {
+            "deviceId": self.device_id,
+            "timestamp": timestamp,
+            "imageUrl": image_url,
+            "briefAnalysis": brief_analysis,
+            "detailAnalysis": detail_analysis,
+            "originalPrompt": original_prompt,
+            "read": False
+        }
+
+        db_url = f"{self.db_url}/detail_info.json"
+        response = requests.post(db_url, json=detail_data)
+        return response.status_code == 200

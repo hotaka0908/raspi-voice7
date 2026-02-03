@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>詳細情報 - raspi-voice6</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100%;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: #4ade80;
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .header .back-link {
+            color: white;
+            text-decoration: none;
+            font-size: 1.5rem;
+            padding: 5px;
+        }
+
+        /* Main container */
+        .container {
+            padding-top: 70px;
+            padding-bottom: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        /* Detail card */
+        .detail-card {
+            background: white;
+            margin: 15px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .detail-card.unread {
+            border-left: 4px solid #4ade80;
+        }
+
+        .detail-card .image-container {
+            width: 100%;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .detail-card .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .detail-card .brief {
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+            color: white;
+            padding: 12px 15px;
+        }
+
+        .detail-card .brief .question {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .detail-card .brief .answer {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .detail-card .content {
+            padding: 15px;
+        }
+
+        .detail-card .content h2 {
+            font-size: 1.1rem;
+            color: #333;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #4ade80;
+        }
+
+        .detail-card .content h2:first-child {
+            margin-top: 0;
+        }
+
+        .detail-card .content p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .detail-card .content ul, .detail-card .content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .detail-card .content li {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .detail-card .meta {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+            font-size: 0.8rem;
+            color: #999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Photo modal */
+        .photo-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+
+        .photo-modal.active {
+            display: flex;
+        }
+
+        .photo-modal img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+        }
+
+        .photo-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Loading indicator */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(74, 222, 128, 0.2);
+            border-top-color: #4ade80;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* New badge */
+        .new-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <a href="index.html" class="back-link">&larr;</a>
+        <h1>詳細情報</h1>
+    </div>
+
+    <div class="container" id="container">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>読み込み中...</p>
+        </div>
+    </div>
+
+    <!-- Photo modal -->
+    <div class="photo-modal" id="photoModal">
+        <button class="close-btn" id="closePhotoModal">&times;</button>
+        <img id="photoModalImg" src="" alt="Full size photo">
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import firebaseConfig from './firebase-config.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // DOM elements
+        const container = document.getElementById('container');
+        const photoModal = document.getElementById('photoModal');
+        const photoModalImg = document.getElementById('photoModalImg');
+        const closePhotoModal = document.getElementById('closePhotoModal');
+
+        // State
+        let detailInfos = [];
+
+        // Format timestamp
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            const isYesterday = new Date(now - 86400000).toDateString() === date.toDateString();
+
+            const timeStr = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            if (isToday) {
+                return `今日 ${timeStr}`;
+            } else if (isYesterday) {
+                return `昨日 ${timeStr}`;
+            } else {
+                return date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) + ` ${timeStr}`;
+            }
+        }
+
+        // Render detail infos
+        function renderDetailInfos() {
+            if (detailInfos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">&#x1F50D;</div>
+                        <p>詳細情報はまだありません</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">
+                            「これ何？」の後に「もっと詳しく」と言うと<br>
+                            ここに詳細情報が表示されます
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = detailInfos.map(info => {
+                const unreadClass = !info.read ? 'unread' : '';
+                const newBadge = !info.read ? '<span class="new-badge">新着</span>' : '';
+                const detailHtml = marked.parse(info.detailAnalysis || '');
+
+                return `
+                    <div class="detail-card ${unreadClass}" data-id="${info.id}">
+                        <div class="image-container" data-url="${info.imageUrl}">
+                            <img src="${info.imageUrl}" alt="撮影画像" loading="lazy">
+                        </div>
+                        <div class="brief">
+                            <div class="question">質問: ${info.originalPrompt || 'これ何？'}</div>
+                            <div class="answer">回答: ${info.briefAnalysis || ''}</div>
+                        </div>
+                        <div class="content">
+                            ${detailHtml}
+                        </div>
+                        <div class="meta">
+                            <span>${formatTime(info.timestamp)}</span>
+                            ${newBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers for images
+            document.querySelectorAll('.image-container').forEach(img => {
+                img.addEventListener('click', () => openPhotoModal(img.dataset.url));
+            });
+
+            // Mark unread items as read
+            detailInfos.forEach(info => {
+                if (!info.read) {
+                    markAsRead(info.id);
+                }
+            });
+        }
+
+        // Open photo modal
+        function openPhotoModal(url) {
+            photoModalImg.src = url;
+            photoModal.classList.add('active');
+        }
+
+        // Close photo modal
+        function closePhotoModalHandler() {
+            photoModal.classList.remove('active');
+            photoModalImg.src = '';
+        }
+
+        // Mark as read
+        function markAsRead(id) {
+            const infoRef = ref(db, `detail_info/${id}`);
+            update(infoRef, { read: true });
+        }
+
+        // Listen for detail info
+        function listenForDetailInfo() {
+            const detailRef = query(
+                ref(db, 'detail_info'),
+                orderByChild('timestamp'),
+                limitToLast(20)
+            );
+
+            onValue(detailRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    detailInfos = [];
+                    renderDetailInfos();
+                    return;
+                }
+
+                detailInfos = Object.entries(data)
+                    .map(([id, info]) => ({ id, ...info }))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+
+                renderDetailInfos();
+            });
+        }
+
+        // Event listeners
+        closePhotoModal.addEventListener('click', closePhotoModalHandler);
+        photoModal.addEventListener('click', (e) => {
+            if (e.target === photoModal) closePhotoModalHandler();
+        });
+
+        // Initialize
+        listenForDetailInfo();
+    </script>
+</body>
+</html>

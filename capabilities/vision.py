@@ -10,6 +10,8 @@
 import base64
 import subprocess
 import threading
+import time
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from openai import OpenAI
 
@@ -22,6 +24,51 @@ camera_lock = threading.Lock()
 
 # OpenAIクライアント（Vision API用）
 _openai_client = None
+
+
+# 直前の撮影コンテキスト
+@dataclass
+class LastCaptureContext:
+    """直前の撮影コンテキスト"""
+    image_data: bytes        # 画像バイナリ
+    image_base64: str        # Base64エンコード済み
+    brief_analysis: str      # 簡潔な分析結果
+    prompt: str              # 元の質問
+    timestamp: float         # 撮影時刻（5分でタイムアウト）
+
+
+_last_capture: Optional[LastCaptureContext] = None
+CAPTURE_TIMEOUT_SEC = 300  # 5分
+
+
+def get_last_capture() -> Optional[LastCaptureContext]:
+    """5分以内の撮影コンテキストを取得"""
+    global _last_capture
+    if _last_capture is None:
+        return None
+    if time.time() - _last_capture.timestamp > CAPTURE_TIMEOUT_SEC:
+        _last_capture = None
+        return None
+    return _last_capture
+
+
+def clear_last_capture() -> None:
+    """撮影コンテキストをクリア"""
+    global _last_capture
+    _last_capture = None
+
+
+def _save_capture_context(image_data: bytes, image_base64: str,
+                          brief_analysis: str, prompt: str) -> None:
+    """撮影コンテキストを保存"""
+    global _last_capture
+    _last_capture = LastCaptureContext(
+        image_data=image_data,
+        image_base64=image_base64,
+        brief_analysis=brief_analysis,
+        prompt=prompt,
+        timestamp=time.time()
+    )
 
 
 def get_openai_client():
@@ -126,7 +173,12 @@ promptで質問を渡すと、見たものについてその質問に答える""
                 max_tokens=300
             )
 
-            return CapabilityResult.ok(response.choices[0].message.content)
+            brief_analysis = response.choices[0].message.content
+
+            # 撮影コンテキストを保存（後で「詳しく」と聞かれた時用）
+            _save_capture_context(image_data, image_base64, brief_analysis, prompt)
+
+            return CapabilityResult.ok(brief_analysis)
 
         except Exception:
             return CapabilityResult.fail("今は見えません")
@@ -156,4 +208,14 @@ def capture_image_raw() -> Optional[bytes]:
 # エクスポート
 VISION_CAPABILITIES = [
     CameraCapture(),
+]
+
+# コンテキスト関連のエクスポート
+__all__ = [
+    'VISION_CAPABILITIES',
+    'capture_image_raw',
+    'get_last_capture',
+    'clear_last_capture',
+    'LastCaptureContext',
+    'get_openai_client',
 ]
