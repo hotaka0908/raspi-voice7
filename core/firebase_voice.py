@@ -248,6 +248,9 @@ class FirebaseVoiceMessenger:
         Returns:
             成功時True
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         timestamp = int(time.time() * 1000)
         filename = f"{self.device_id}_{timestamp}.jpg"
 
@@ -257,9 +260,13 @@ class FirebaseVoiceMessenger:
         upload_url = f"{storage_url}/{encoded_path}"
 
         headers = {"Content-Type": "image/jpeg"}
-        response = requests.post(upload_url, headers=headers, data=image_data)
-
-        if response.status_code != 200:
+        try:
+            response = requests.post(upload_url, headers=headers, data=image_data)
+            if response.status_code != 200:
+                logger.error(f"Failed to upload detail photo: {response.status_code} {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Exception uploading detail photo: {e}")
             return False
 
         image_url = f"{storage_url}/{encoded_path}?alt=media"
@@ -276,5 +283,12 @@ class FirebaseVoiceMessenger:
         }
 
         db_url = f"{self.db_url}/detail_info.json"
-        response = requests.post(db_url, json=detail_data)
-        return response.status_code == 200
+        try:
+            response = requests.post(db_url, json=detail_data)
+            if response.status_code != 200:
+                logger.error(f"Failed to save detail info: {response.status_code} {response.text}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Exception saving detail info: {e}")
+            return False

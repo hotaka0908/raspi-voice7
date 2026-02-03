@@ -305,10 +305,19 @@
                 return;
             }
 
+            // HTMLエスケープ関数
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
             container.innerHTML = detailInfos.map(info => {
                 const unreadClass = !info.read ? 'unread' : '';
                 const newBadge = !info.read ? '<span class="new-badge">新着</span>' : '';
                 const detailHtml = marked.parse(info.detailAnalysis || '');
+                const safePrompt = escapeHtml(info.originalPrompt || 'これ何？');
+                const safeBrief = escapeHtml(info.briefAnalysis || '');
 
                 return `
                     <div class="detail-card ${unreadClass}" data-id="${info.id}">
@@ -316,8 +325,8 @@
                             <img src="${info.imageUrl}" alt="撮影画像" loading="lazy">
                         </div>
                         <div class="brief">
-                            <div class="question">質問: ${info.originalPrompt || 'これ何？'}</div>
-                            <div class="answer">回答: ${info.briefAnalysis || ''}</div>
+                            <div class="question">質問: ${safePrompt}</div>
+                            <div class="answer">回答: ${safeBrief}</div>
                         </div>
                         <div class="content">
                             ${detailHtml}
