@@ -27,12 +27,17 @@ from .memory import (
     pause_lifelog, resume_lifelog, is_lifelog_paused
 )
 from .search import SEARCH_CAPABILITIES
-from .calendar import CALENDAR_CAPABILITIES, init_calendar
+from .calendar import CALENDAR_CAPABILITIES, init_calendar, get_calendar_service
 from .videocall import (
     VIDEOCALL_CAPABILITIES,
     set_videocall_callbacks
 )
 from .detail_info import DETAIL_INFO_CAPABILITIES
+from .proactive_reminder import (
+    start_reminder_thread,
+    stop_reminder_thread,
+    set_reminder_notify_callback
+)
 
 __all__ = [
     'Capability',
@@ -66,5 +71,9 @@ __all__ = [
     'SEARCH_CAPABILITIES',
     'CALENDAR_CAPABILITIES',
     'init_calendar',
+    'get_calendar_service',
     'set_videocall_callbacks',
+    'start_reminder_thread',
+    'stop_reminder_thread',
+    'set_reminder_notify_callback',
 ]

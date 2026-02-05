@@ -32,6 +32,11 @@ CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar']
 _calendar_service = None
 
 
+def get_calendar_service():
+    """カレンダーサービスを取得"""
+    return _calendar_service
+
+
 def init_calendar() -> bool:
     """Google Calendar API初期化"""
     global _calendar_service

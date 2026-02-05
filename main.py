@@ -47,6 +47,9 @@ from capabilities import (
     pause_lifelog,
     resume_lifelog,
     set_videocall_callbacks,
+    start_reminder_thread,
+    stop_reminder_thread,
+    set_reminder_notify_callback,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -774,6 +777,20 @@ async def main_async():
     start_alarm_thread()
     start_lifelog_thread()
 
+    # プロアクティブリマインダー通知コールバック
+    def reminder_notify(message: str):
+        if client.is_connected:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    client.send_text_message(message),
+                    client.loop
+                )
+            except Exception:
+                pass
+
+    set_reminder_notify_callback(reminder_notify)
+    start_reminder_thread()
+
     try:
         while running:
             # セッションタイムアウトチェック（voice_message_mode中はスキップ）
@@ -858,6 +875,7 @@ async def main_async():
         audio_handler.cleanup()
         stop_alarm_thread()
         stop_lifelog_thread()
+        stop_reminder_thread()
         # ビデオ通話クリーンアップ
         if _signaling:
             _signaling.stop_listening()

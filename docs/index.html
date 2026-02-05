@@ -1493,9 +1493,89 @@
             toggleAudioBtn.classList.toggle('off', !audioEnabled);
         });
 
+        // ========================================
+        // 位置情報送信機能
+        // ========================================
+        let lastLocationUpdate = 0;
+        const LOCATION_UPDATE_INTERVAL = 60000; // 1分ごとに更新
+
+        // 位置情報をFirebaseに送信
+        async function sendLocationToFirebase(position) {
+            const now = Date.now();
+
+            // 更新間隔チェック（1分以内の更新はスキップ）
+            if (now - lastLocationUpdate < LOCATION_UPDATE_INTERVAL) {
+                return;
+            }
+
+            try {
+                const locationRef = ref(db, 'user_location');
+                await set(locationRef, {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    timestamp: now,
+                    deviceId: DEVICE_ID
+                });
+                lastLocationUpdate = now;
+                console.log('位置情報を送信:', position.coords.latitude, position.coords.longitude);
+            } catch (error) {
+                console.error('位置情報送信エラー:', error);
+            }
+        }
+
+        // 位置情報の初期化
+        function initGeolocation() {
+            if (!navigator.geolocation) {
+                console.log('Geolocation APIに対応していません');
+                return;
+            }
+
+            // 位置情報の許可を求める
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('位置情報許可OK');
+                    sendLocationToFirebase(position);
+
+                    // 移動時に即時更新（watchPosition）
+                    navigator.geolocation.watchPosition(
+                        sendLocationToFirebase,
+                        (error) => console.log('位置情報取得エラー:', error.message),
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 30000,
+                            maximumAge: 60000
+                        }
+                    );
+                },
+                (error) => {
+                    console.log('位置情報が許可されていません:', error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+
+            // 定期更新（バックグラウンドでwatchPositionが動かない場合のフォールバック）
+            setInterval(() => {
+                navigator.geolocation.getCurrentPosition(
+                    sendLocationToFirebase,
+                    (error) => console.log('位置情報取得エラー:', error.message),
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 30000,
+                        maximumAge: 60000
+                    }
+                );
+            }, LOCATION_UPDATE_INTERVAL);
+        }
+
         // 初期化
         listenForMessages();
         initVideoCall();
+        initGeolocation();
     </script>
 </body>
 </html>

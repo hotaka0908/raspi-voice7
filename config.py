@@ -46,6 +46,13 @@ class Config:
     # ライフログ設定
     LIFELOG_INTERVAL = 60  # 1分（秒）
 
+    # プロアクティブリマインダー設定
+    REMINDER_CHECK_INTERVAL = 60        # チェック間隔（秒）
+    REMINDER_ADVANCE_MINUTES = 10       # 出発何分前にリマインド
+    REMINDER_MOVEMENT_CHECK_DELAY = 30  # 移動検知の再撮影待ち（秒）
+    REMINDER_LOOKAHEAD_HOURS = 3        # 監視する予定の範囲（時間）
+    REMINDER_MAX_RETRIES = 3            # 再リマインド最大回数
+
     # セッション設定
     SESSION_RESET_TIMEOUT = 10  # 秒（応答後このくらい経過でリセット）
     VOICE_MESSAGE_TIMEOUT = 60  # 秒（音声メッセージモードのタイムアウト）
@@ -89,6 +96,14 @@ class Config:
         key = os.getenv("TAVILY_API_KEY")
         if not key:
             raise ValueError("TAVILY_API_KEY が設定されていません")
+        return key
+
+    @classmethod
+    def get_google_maps_api_key(cls) -> str:
+        """Google Maps APIキーを取得（Directions API用）"""
+        key = os.getenv("GOOGLE_MAPS_API_KEY")
+        if not key:
+            raise ValueError("GOOGLE_MAPS_API_KEY が設定されていません")
         return key
 
     # Gmail APIスコープ
