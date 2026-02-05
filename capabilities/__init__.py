@@ -33,7 +33,11 @@ from .videocall import (
     set_videocall_callbacks
 )
 from .detail_info import DETAIL_INFO_CAPABILITIES
-from .music import MUSIC_CAPABILITIES, is_music_playing, get_current_track, stop_music_player, set_music_audio_callbacks
+from .music import (
+    MUSIC_CAPABILITIES, is_music_playing, get_current_track, stop_music_player,
+    set_music_audio_callbacks, is_music_active, pause_music_for_conversation,
+    resume_music_after_conversation
+)
 from .proactive_reminder import (
     start_reminder_thread,
     stop_reminder_thread,
@@ -57,6 +61,9 @@ __all__ = [
     'get_current_track',
     'stop_music_player',
     'set_music_audio_callbacks',
+    'is_music_active',
+    'pause_music_for_conversation',
+    'resume_music_after_conversation',
     'capture_image_raw',
     'get_last_capture',
     'clear_last_capture',

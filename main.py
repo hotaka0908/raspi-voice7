@@ -52,6 +52,9 @@ from capabilities import (
     set_reminder_notify_callback,
     stop_music_player,
     set_music_audio_callbacks,
+    is_music_active,
+    pause_music_for_conversation,
+    resume_music_after_conversation,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -710,6 +713,12 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         continue
                     else:
                         client.last_response_time = None
+
+                        # 音楽再生中なら一時停止してオーディオストリームを再開
+                        if is_music_active():
+                            pause_music_for_conversation()
+                            logger.info("=== 音楽一時停止 ===")
+
                         logger.info("=== 録音開始 ===")
                         chunk_count = 0
 
@@ -807,6 +816,11 @@ async def main_async():
                         logger.info("--- セッションリセット ---")
                         client.needs_session_reset = True
                         client.last_response_time = None
+
+                        # 音楽が一時停止中なら再開
+                        if is_music_active():
+                            resume_music_after_conversation()
+                            logger.info("=== 音楽再開 ===")
 
             # セッションリセット
             if client.needs_session_reset and client.is_connected:

@@ -171,6 +171,82 @@ def get_current_track() -> Optional[str]:
     return _current_track
 
 
+def is_music_active() -> bool:
+    """音楽プレイヤーがアクティブかどうか（一時停止中も含む）"""
+    global _player_process
+
+    with _player_lock:
+        if _player_process is None:
+            return False
+        if _player_process.poll() is not None:
+            _player_process = None
+            return False
+        return True
+
+
+def pause_music_for_conversation() -> bool:
+    """会話のために音楽を一時停止し、オーディオストリームを再開"""
+    global _player_process, _is_paused
+
+    with _player_lock:
+        if not _player_process or _player_process.poll() is not None:
+            return False
+
+        # 既に一時停止中なら何もしない
+        if _is_paused:
+            # オーディオストリームだけ再開
+            if _start_audio_callback:
+                try:
+                    _start_audio_callback()
+                except Exception:
+                    pass
+            return True
+
+        try:
+            os.kill(_player_process.pid, signal.SIGSTOP)
+            _is_paused = True
+        except (ProcessLookupError, OSError):
+            return False
+
+    # オーディオストリームを再開
+    if _start_audio_callback:
+        try:
+            _start_audio_callback()
+        except Exception:
+            pass
+
+    return True
+
+
+def resume_music_after_conversation() -> bool:
+    """会話終了後に音楽を再開し、オーディオストリームを停止"""
+    global _player_process, _is_paused
+
+    with _player_lock:
+        if not _player_process or _player_process.poll() is not None:
+            return False
+
+        # 一時停止中でなければ何もしない
+        if not _is_paused:
+            return True
+
+    # オーディオストリームを停止
+    if _stop_audio_callback:
+        try:
+            _stop_audio_callback()
+        except Exception:
+            pass
+
+    with _player_lock:
+        try:
+            os.kill(_player_process.pid, signal.SIGCONT)
+            _is_paused = False
+        except (ProcessLookupError, OSError):
+            return False
+
+    return True
+
+
 class MusicPlay(Capability):
     """音楽再生"""
 
