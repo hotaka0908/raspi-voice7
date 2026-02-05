@@ -22,13 +22,26 @@ _player_lock = threading.Lock()
 _current_track: Optional[str] = None
 _is_paused = False
 
+# オーディオコールバック（メインのオーディオストリーム制御用）
+_stop_audio_callback: Optional[callable] = None
+_start_audio_callback: Optional[callable] = None
 
-def _kill_player() -> None:
+
+def set_music_audio_callbacks(stop_callback: callable, start_callback: callable) -> None:
+    """音楽再生時のオーディオコールバックを設定"""
+    global _stop_audio_callback, _start_audio_callback
+    _stop_audio_callback = stop_callback
+    _start_audio_callback = start_callback
+
+
+def _kill_player(restart_audio: bool = True) -> None:
     """プレイヤープロセスを終了"""
     global _player_process, _current_track, _is_paused
 
+    was_playing = False
     with _player_lock:
         if _player_process:
+            was_playing = True
             try:
                 # 一時停止中の場合は先に再開（SIGSTOPされたプロセスはSIGTERMを処理できない）
                 if _is_paused:
@@ -51,13 +64,27 @@ def _kill_player() -> None:
             _current_track = None
             _is_paused = False
 
+    # メインのオーディオストリームを再開
+    if was_playing and restart_audio and _start_audio_callback:
+        try:
+            _start_audio_callback()
+        except Exception:
+            pass
+
 
 def _play_youtube(query: str) -> bool:
     """YouTubeから検索して再生"""
     global _player_process, _current_track, _is_paused
 
-    # 既存の再生を停止
-    _kill_player()
+    # 既存の再生を停止（オーディオは再開しない、新しい曲を再生するため）
+    _kill_player(restart_audio=False)
+
+    # メインのオーディオストリームを停止（デバイス競合回避）
+    if _stop_audio_callback:
+        try:
+            _stop_audio_callback()
+        except Exception:
+            pass
 
     try:
         # yt-dlpで検索してmpvで再生

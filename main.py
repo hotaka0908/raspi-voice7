@@ -51,6 +51,7 @@ from capabilities import (
     stop_reminder_thread,
     set_reminder_notify_callback,
     stop_music_player,
+    set_music_audio_callbacks,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -757,6 +758,10 @@ async def main_async():
 
     # コールバック設定
     set_play_audio_callback(audio_handler.play_audio_buffer)
+    set_music_audio_callbacks(
+        stop_callback=audio_handler.stop_output_stream,
+        start_callback=audio_handler.start_output_stream
+    )
 
     client = OpenAIRealtimeClient(audio_handler)
     receive_task = None
