@@ -90,10 +90,12 @@ def _play_youtube(query: str) -> bool:
         # yt-dlpで検索してmpvで再生
         # --no-video: 音声のみ
         # --ytdl-format: 音声のみの最高品質
+        # --volume: 音量（70%）
         cmd = [
             "mpv",
             "--no-video",
             "--ytdl-format=bestaudio",
+            "--volume=70",
             "--really-quiet",
             f"ytdl://ytsearch1:{query}"
         ]
