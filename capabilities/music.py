@@ -95,7 +95,7 @@ def _play_youtube(query: str) -> bool:
             "mpv",
             "--no-video",
             "--ytdl-format=bestaudio",
-            "--volume=70",
+            "--volume=60",
             "--really-quiet",
             f"ytdl://ytsearch1:{query}"
         ]
