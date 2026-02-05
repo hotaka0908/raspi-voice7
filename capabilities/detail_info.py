@@ -4,6 +4,7 @@
 直前に見たものの詳細情報をスマホに送る
 """
 
+import threading
 from typing import Any, Dict
 
 from .base import Capability, CapabilityCategory, CapabilityResult
@@ -106,24 +107,20 @@ class SendDetailInfo(Capability):
         except Exception:
             return CapabilityResult.fail("詳細情報を取得できませんでした")
 
-        # 4. Firebaseに送信
-        try:
-            success = firebase.send_detail_info(
+        # 4. Firebaseに非同期で送信（送信完了を待たずに返答）
+        def send_async():
+            firebase.send_detail_info(
                 image_data=context.image_data,
                 brief_analysis=context.brief_analysis,
                 detail_analysis=detail_analysis,
                 original_prompt=context.prompt
             )
 
-            if success:
-                # コンテキストをクリア（同じ画像で何度も送らないように）
-                clear_last_capture()
-                return CapabilityResult.ok("詳しい情報をスマホに送りました")
-            else:
-                return CapabilityResult.fail("今はスマホに送れません")
+        threading.Thread(target=send_async, daemon=True).start()
 
-        except Exception:
-            return CapabilityResult.fail("今はスマホに送れません")
+        # コンテキストをクリア（同じ画像で何度も送らないように）
+        clear_last_capture()
+        return CapabilityResult.ok("詳しい情報をスマホに送りました")
 
 
 # エクスポート
