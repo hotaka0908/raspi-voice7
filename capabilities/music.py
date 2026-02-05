@@ -262,10 +262,12 @@ class MusicPlay(Capability):
 
     @property
     def description(self) -> str:
-        return """音楽を流す。以下の場面で使う：
+        return """音楽を流す。以下の場面で必ず使う：
 - 「音楽流して」「○○の曲かけて」「BGMつけて」
 - アーティスト名、曲名、ジャンルで検索して再生
-- 曲名が指定されない場合は「リラックス BGM」などで検索"""
+- 曲名が指定されない場合は「リラックス BGM」などで検索
+重要：ユーザーが曲やアーティストを指定したら、聞き返さずにすぐこのツールを呼び出す。
+聞き取った内容をそのままqueryに入れてYouTubeで検索する。"""
 
     def _get_parameters(self) -> Dict[str, Any]:
         return {
