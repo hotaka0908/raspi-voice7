@@ -15,6 +15,7 @@ from .search import SEARCH_CAPABILITIES
 from .calendar import CALENDAR_CAPABILITIES
 from .videocall import VIDEOCALL_CAPABILITIES
 from .detail_info import DETAIL_INFO_CAPABILITIES
+from .music import MUSIC_CAPABILITIES
 
 
 class CapabilityExecutor:
@@ -34,7 +35,8 @@ class CapabilityExecutor:
             SEARCH_CAPABILITIES +
             CALENDAR_CAPABILITIES +
             VIDEOCALL_CAPABILITIES +
-            DETAIL_INFO_CAPABILITIES
+            DETAIL_INFO_CAPABILITIES +
+            MUSIC_CAPABILITIES
         )
         for cap in all_capabilities:
             self._capabilities[cap.name] = cap

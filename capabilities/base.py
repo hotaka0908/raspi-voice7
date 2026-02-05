@@ -18,6 +18,7 @@ class CapabilityCategory(Enum):
     SCHEDULE = "覚える"
     MEMORY = "記録する"
     CALL = "通話する"
+    MUSIC = "聴く"
 
 
 @dataclass

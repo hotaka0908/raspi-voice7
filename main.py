@@ -50,6 +50,7 @@ from capabilities import (
     start_reminder_thread,
     stop_reminder_thread,
     set_reminder_notify_callback,
+    stop_music_player,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -876,6 +877,7 @@ async def main_async():
         stop_alarm_thread()
         stop_lifelog_thread()
         stop_reminder_thread()
+        stop_music_player()
         # ビデオ通話クリーンアップ
         if _signaling:
             _signaling.stop_listening()

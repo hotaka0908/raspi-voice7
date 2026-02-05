@@ -28,3 +28,6 @@ requests
 # WebRTC (Video calls)
 aiortc
 aiohttp
+
+# Music playback (YouTube)
+yt-dlp
