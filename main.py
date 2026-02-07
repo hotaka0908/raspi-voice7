@@ -27,6 +27,7 @@ from core import (
     OpenAIRealtimeClient,
     generate_startup_sound,
     generate_notification_sound,
+    generate_reset_sound,
     FirebaseSignaling,
     get_video_call_manager,
     AIORTC_AVAILABLE,
@@ -95,6 +96,8 @@ running = True
 button: Optional[object] = None
 is_recording = False
 audio_handler: Optional[AudioHandler] = None
+last_button_press_time: float = 0  # ダブルクリック検出用
+DOUBLE_CLICK_THRESHOLD = 0.5  # ダブルクリック判定時間（秒）
 
 # ビデオ通話状態
 _signaling: Optional[FirebaseSignaling] = None
@@ -669,7 +672,7 @@ def send_recorded_voice_message(client: OpenAIRealtimeClient) -> bool:
 
 async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHandler):
     """音声入力ループ"""
-    global running, button, is_recording, _pending_incoming_call
+    global running, button, is_recording, _pending_incoming_call, last_button_press_time
     chunk_count = 0
 
     while running:
@@ -681,6 +684,28 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
         if Config.USE_BUTTON and button:
             if button.is_pressed:
                 if not is_recording:
+                    # ダブルクリック検出（セッションリセット）
+                    current_time = time.time()
+                    if current_time - last_button_press_time < DOUBLE_CLICK_THRESHOLD:
+                        logger.info("=== ダブルクリック: セッションリセット ===")
+                        last_button_press_time = 0  # リセット後はタイムスタンプをクリア
+                        client.needs_session_reset = True
+                        client.last_response_time = None
+                        # リセット音を再生
+                        reset_sound = generate_reset_sound()
+                        if reset_sound:
+                            audio_handler.play_audio_buffer(reset_sound)
+                        # 音楽が一時停止中なら再開
+                        if is_music_active():
+                            resume_music_after_conversation()
+                            logger.info("=== 音楽再開 ===")
+                        # ボタンが離されるまで待つ
+                        while button.is_pressed and running:
+                            await asyncio.sleep(0.05)
+                        await asyncio.sleep(0.2)
+                        continue
+                    last_button_press_time = current_time
+
                     # 着信中なら応答
                     if _pending_incoming_call:
                         logger.info("=== ビデオ通話応答 ===")

@@ -263,3 +263,35 @@ def generate_notification_sound() -> Optional[bytes]:
         return wav_buffer.getvalue()
     except Exception:
         return None
+
+
+def generate_reset_sound() -> Optional[bytes]:
+    """セッションリセット音を生成（2つの下降音）"""
+    try:
+        sample_rate = 48000
+        frequencies = [784, 523]  # G5, C5（下降）
+        duration = 0.1
+        gap_duration = 0.05
+
+        sounds = []
+        for i, freq in enumerate(frequencies):
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+            envelope = np.minimum(t / 0.02, 1) * np.minimum((duration - t) / 0.02, 1)
+            tone = (np.sin(2 * np.pi * freq * t) * envelope * 0.35 * 32767).astype(np.int16)
+            sounds.append(tone)
+            if i < len(frequencies) - 1:
+                gap = np.zeros(int(sample_rate * gap_duration), dtype=np.int16)
+                sounds.append(gap)
+
+        sound = np.concatenate(sounds)
+
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(sound.tobytes())
+
+        return wav_buffer.getvalue()
+    except Exception:
+        return None
