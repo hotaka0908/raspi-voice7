@@ -56,6 +56,7 @@ from capabilities import (
     is_music_active,
     pause_music_for_conversation,
     resume_music_after_conversation,
+    close_openclaw_client,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -922,6 +923,8 @@ async def main_async():
         stop_lifelog_thread()
         stop_reminder_thread()
         stop_music_player()
+        # OpenClawクリーンアップ
+        close_openclaw_client()
         # ビデオ通話クリーンアップ
         if _signaling:
             _signaling.stop_listening()

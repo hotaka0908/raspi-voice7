@@ -43,6 +43,11 @@ from .proactive_reminder import (
     stop_reminder_thread,
     set_reminder_notify_callback
 )
+from .openclaw import (
+    OPENCLAW_CAPABILITIES,
+    close_openclaw_client,
+    get_openclaw_client
+)
 
 __all__ = [
     'Capability',
@@ -57,6 +62,7 @@ __all__ = [
     'VIDEOCALL_CAPABILITIES',
     'DETAIL_INFO_CAPABILITIES',
     'MUSIC_CAPABILITIES',
+    'OPENCLAW_CAPABILITIES',
     'is_music_playing',
     'get_current_track',
     'stop_music_player',
@@ -89,4 +95,7 @@ __all__ = [
     'start_reminder_thread',
     'stop_reminder_thread',
     'set_reminder_notify_callback',
+    'OPENCLAW_CAPABILITIES',
+    'close_openclaw_client',
+    'get_openclaw_client',
 ]

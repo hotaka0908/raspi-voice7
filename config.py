@@ -5,6 +5,7 @@ raspi-voice7 設定 (OpenAI Realtime API版)
 """
 
 import os
+from typing import Optional
 from dotenv import load_dotenv
 
 # 環境変数の読み込み
@@ -105,6 +106,17 @@ class Config:
         if not key:
             raise ValueError("GOOGLE_MAPS_API_KEY が設定されていません")
         return key
+
+    @classmethod
+    def get_openclaw_url(cls) -> str:
+        """OpenClaw Gateway URLを取得"""
+        url = os.getenv("OPENCLAW_GATEWAY_URL", "ws://127.0.0.1:18789")
+        return url
+
+    @classmethod
+    def get_openclaw_token(cls) -> Optional[str]:
+        """OpenClaw Gatewayトークンを取得（任意）"""
+        return os.getenv("OPENCLAW_GATEWAY_TOKEN")
 
     # Gmail APIスコープ
     GMAIL_SCOPES = [
