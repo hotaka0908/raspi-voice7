@@ -513,31 +513,47 @@ def on_voice_message_received(message):
     """スマホからの音声メッセージを受信"""
     global audio_handler
 
+    msg_id = message.get("id", "unknown")
+    logger.info(f"[受信] メッセージ受信開始: id={msg_id}")
+
     if not audio_handler:
+        logger.error(f"[受信] audio_handlerがNone: id={msg_id}")
         return
+
+    logger.info(f"[受信] audio_handler状態: is_playing={audio_handler.is_playing}, output_stream={audio_handler.output_stream is not None}")
 
     # 通知音
     notification = generate_notification_sound()
     if notification:
+        logger.info(f"[受信] 通知音再生: id={msg_id}")
         audio_handler.play_audio_buffer(notification)
 
     try:
         audio_url = message.get("audio_url")
         if not audio_url:
+            logger.warning(f"[受信] audio_urlがない: id={msg_id}")
             return
 
         messenger = get_firebase_messenger()
         if not messenger:
+            logger.error(f"[受信] messengerがNone: id={msg_id}")
             return
 
+        logger.info(f"[受信] 音声ダウンロード開始: id={msg_id}")
         audio_data = messenger.download_audio(audio_url)
         if not audio_data:
+            logger.error(f"[受信] 音声ダウンロード失敗: id={msg_id}")
             return
+        logger.info(f"[受信] 音声ダウンロード完了: id={msg_id}, size={len(audio_data)} bytes")
 
         filename = message.get("filename", "audio.webm")
+        logger.info(f"[受信] WebM→WAV変換開始: id={msg_id}, filename={filename}")
         wav_data = convert_webm_to_wav(audio_data)
         if wav_data:
+            logger.info(f"[受信] WAV変換完了: id={msg_id}, size={len(wav_data)} bytes")
+            logger.info(f"[受信] 音声再生開始: id={msg_id}")
             audio_handler.play_audio_buffer(wav_data)
+            logger.info(f"[受信] 音声再生完了: id={msg_id}")
 
             # テキストがない場合はSTTでテキスト化してFirebaseに保存
             if not message.get("text"):
@@ -550,11 +566,14 @@ def on_voice_message_received(message):
                             logger.info(f"受信メッセージをテキスト化: {transcribed_text[:50]}...")
                 except Exception as e:
                     logger.warning(f"テキスト化エラー: {e}")
+        else:
+            logger.error(f"[受信] WAV変換失敗: id={msg_id}")
 
         messenger.mark_as_played(message.get("id"))
+        logger.info(f"[受信] メッセージ処理完了: id={msg_id}")
 
     except Exception as e:
-        logger.error(f"メッセージ受信エラー: {e}")
+        logger.error(f"[受信] メッセージ受信エラー: id={msg_id}, error={e}")
 
 
 def transcribe_audio(wav_data: bytes) -> Optional[str]:

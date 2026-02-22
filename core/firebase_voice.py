@@ -8,10 +8,14 @@ REST API経由でアクセス（サービスアカウント不要）
 
 import os
 import time
+import logging
 import requests
 import threading
 from typing import Optional, Callable, Dict, List, Any
 from dotenv import load_dotenv
+
+# ロガー設定
+logger = logging.getLogger("firebase_voice")
 
 # 環境変数の読み込み
 env_path = os.path.expanduser("~/.ai-necklace/.env")
@@ -155,9 +159,14 @@ class FirebaseVoiceMessenger:
     def get_messages(self, limit: int = 10, unplayed_only: bool = False) -> List[Dict]:
         """メッセージ一覧を取得"""
         db_url = f"{self.db_url}/messages.json"
-        response = requests.get(db_url)
+        try:
+            response = requests.get(db_url, timeout=10)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[POLLING] Firebase接続エラー: {e}")
+            return []
 
         if response.status_code != 200:
+            logger.error(f"[POLLING] Firebase応答エラー: {response.status_code}")
             return []
 
         data = response.json()
@@ -201,13 +210,22 @@ class FirebaseVoiceMessenger:
 
         def poll_loop():
             # 既存メッセージを記録
+            logger.info("[POLLING] ポーリング開始、既存メッセージを記録中...")
             messages = self.get_messages(limit=20)
             for msg in messages:
                 self.processed_ids.add(msg.get("id"))
+            logger.info(f"[POLLING] 既存メッセージ {len(self.processed_ids)} 件を記録")
 
+            poll_count = 0
             while self.running:
                 try:
+                    poll_count += 1
                     messages = self.get_messages(limit=15, unplayed_only=False)
+
+                    # 10回に1回、または新着メッセージがある時にログ出力
+                    new_messages = [m for m in messages if m.get("id") not in self.processed_ids]
+                    if new_messages:
+                        logger.info(f"[POLLING] 新着メッセージ {len(new_messages)} 件検出")
 
                     for msg in reversed(messages):
                         msg_id = msg.get("id")
@@ -215,14 +233,21 @@ class FirebaseVoiceMessenger:
                         if msg_id in self.processed_ids:
                             continue
 
+                        logger.info(f"[POLLING] メッセージ処理開始: id={msg_id}, from={msg.get('from')}")
+
                         if self.on_message_received:
-                            self.on_message_received(msg)
+                            try:
+                                self.on_message_received(msg)
+                                logger.info(f"[POLLING] メッセージ処理完了: id={msg_id}")
+                            except Exception as e:
+                                logger.error(f"[POLLING] コールバックエラー: {e}")
 
                         self.processed_ids.add(msg_id)
                         self.mark_as_played(msg_id)
+                        logger.info(f"[POLLING] メッセージを再生済みにマーク: id={msg_id}")
 
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"[POLLING] ポーリングエラー: {e}")
 
                 time.sleep(poll_interval)
 
