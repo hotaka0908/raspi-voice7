@@ -757,8 +757,14 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         if is_music_active():
                             stop_music_player()
                             logger.info("=== 音楽停止 ===")
-                            await asyncio.sleep(1.0)  # オーディオデバイス解放を待つ（mpvの終了に時間がかかる）
-                            audio_handler.start_output_stream()
+                            # mpvがオーディオデバイスを完全に解放するまで待つ
+                            # リトライしながら出力ストリームを開く
+                            for retry in range(3):
+                                await asyncio.sleep(1.0)
+                                if audio_handler.start_output_stream():
+                                    logger.info(f"=== 出力ストリーム開始成功 (試行{retry + 1}) ===")
+                                    break
+                                logger.warning(f"出力ストリーム開始失敗、リトライ {retry + 1}/3")
                             client.needs_session_reset = True
                             logger.info("=== セッションリセット、会話モードに戻る ===")
                             # 音楽停止のボタン操作では録音を開始しない

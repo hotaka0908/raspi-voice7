@@ -127,7 +127,7 @@ class AudioHandler:
                 pass
         return None
 
-    def start_output_stream(self) -> None:
+    def start_output_stream(self) -> bool:
         """スピーカー出力開始"""
         output_device = Config.OUTPUT_DEVICE_INDEX
         if output_device is None:
@@ -143,9 +143,11 @@ class AudioHandler:
                 frames_per_buffer=Config.CHUNK_SIZE * 2
             )
             self.is_playing = True
+            return True
         except Exception:
             self.output_stream = None
             self.is_playing = False
+            return False
 
     def stop_output_stream(self) -> None:
         """スピーカー出力停止"""
