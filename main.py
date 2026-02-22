@@ -54,8 +54,6 @@ from capabilities import (
     stop_music_player,
     set_music_audio_callbacks,
     is_music_active,
-    pause_music_for_conversation,
-    resume_music_after_conversation,
     close_openclaw_client,
 )
 
@@ -715,10 +713,6 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         reset_sound = generate_reset_sound()
                         if reset_sound:
                             audio_handler.play_audio_buffer(reset_sound)
-                        # 音楽が一時停止中なら再開
-                        if is_music_active():
-                            resume_music_after_conversation()
-                            logger.info("=== 音楽再開 ===")
                         # ボタンが離されるまで待つ
                         while button.is_pressed and running:
                             await asyncio.sleep(0.05)
@@ -759,10 +753,11 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                     else:
                         client.last_response_time = None
 
-                        # 音楽再生中なら一時停止してオーディオストリームを再開
+                        # 音楽再生中なら停止して会話モードに戻る
                         if is_music_active():
-                            pause_music_for_conversation()
-                            logger.info("=== 音楽一時停止 ===")
+                            stop_music_player()
+                            audio_handler.start_output_stream()
+                            logger.info("=== 音楽停止、会話モードに戻る ===")
 
                         logger.info("=== 録音開始 ===")
                         chunk_count = 0
@@ -861,11 +856,6 @@ async def main_async():
                         logger.info("--- セッションリセット ---")
                         client.needs_session_reset = True
                         client.last_response_time = None
-
-                        # 音楽が一時停止中なら再開
-                        if is_music_active():
-                            resume_music_after_conversation()
-                            logger.info("=== 音楽再開 ===")
 
             # セッションリセット
             if client.needs_session_reset and client.is_connected:
