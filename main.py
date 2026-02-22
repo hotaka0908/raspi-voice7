@@ -756,6 +756,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         # 音楽再生中なら停止して会話モードに戻る
                         if is_music_active():
                             stop_music_player()
+                            await asyncio.sleep(0.3)  # オーディオデバイス解放を待つ
                             audio_handler.start_output_stream()
                             logger.info("=== 音楽停止、会話モードに戻る ===")
 
