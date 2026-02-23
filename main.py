@@ -762,6 +762,10 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                             while button.is_pressed and running:
                                 await asyncio.sleep(0.05)
                             await asyncio.sleep(0.2)
+                            # リセット音を再生（会話準備完了を通知）
+                            reset_sound = generate_reset_sound()
+                            if reset_sound:
+                                audio_handler.play_audio_buffer(reset_sound)
                             continue
 
                         logger.info("=== 録音開始 ===")
