@@ -818,7 +818,8 @@ async def main_async():
     set_play_audio_callback(audio_handler.play_audio_buffer)
     set_music_audio_callbacks(
         stop_callback=audio_handler.stop_output_stream,
-        start_callback=audio_handler.start_output_stream
+        start_callback=audio_handler.start_output_stream,
+        play_callback=audio_handler.play_audio_buffer
     )
 
     client = OpenAIRealtimeClient(audio_handler)

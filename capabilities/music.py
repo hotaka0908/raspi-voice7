@@ -14,6 +14,7 @@ import signal
 from typing import Any, Dict, Optional
 
 from .base import Capability, CapabilityCategory, CapabilityResult
+from core.audio import generate_music_start_sound
 
 
 # 音楽プレイヤー状態管理
@@ -25,13 +26,19 @@ _is_paused = False
 # オーディオコールバック（メインのオーディオストリーム制御用）
 _stop_audio_callback: Optional[callable] = None
 _start_audio_callback: Optional[callable] = None
+_play_audio_callback: Optional[callable] = None
 
 
-def set_music_audio_callbacks(stop_callback: callable, start_callback: callable) -> None:
+def set_music_audio_callbacks(
+    stop_callback: callable,
+    start_callback: callable,
+    play_callback: callable = None
+) -> None:
     """音楽再生時のオーディオコールバックを設定"""
-    global _stop_audio_callback, _start_audio_callback
+    global _stop_audio_callback, _start_audio_callback, _play_audio_callback
     _stop_audio_callback = stop_callback
     _start_audio_callback = start_callback
+    _play_audio_callback = play_callback
 
 
 def _kill_player(restart_audio: bool = True) -> None:
@@ -78,6 +85,16 @@ def _play_youtube(query: str) -> bool:
 
     # 既存の再生を停止（オーディオは再開しない、新しい曲を再生するため）
     _kill_player(restart_audio=False)
+
+    # 音楽開始準備音を再生（読み込み中の無音を埋める）
+    if _play_audio_callback:
+        try:
+            start_sound = generate_music_start_sound()
+            if start_sound:
+                _play_audio_callback(start_sound)
+                time.sleep(0.5)  # 音が鳴り終わるまで待つ
+        except Exception:
+            pass
 
     # メインのオーディオストリームを停止（デバイス競合回避）
     if _stop_audio_callback:
