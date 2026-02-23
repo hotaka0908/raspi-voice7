@@ -43,11 +43,6 @@ from .proactive_reminder import (
     stop_reminder_thread,
     set_reminder_notify_callback
 )
-from .proactive_email_calendar import (
-    start_email_calendar_thread,
-    stop_email_calendar_thread,
-    set_email_calendar_notify_callback
-)
 from .openclaw import (
     OPENCLAW_CAPABILITIES,
     close_openclaw_client,
@@ -100,9 +95,6 @@ __all__ = [
     'start_reminder_thread',
     'stop_reminder_thread',
     'set_reminder_notify_callback',
-    'start_email_calendar_thread',
-    'stop_email_calendar_thread',
-    'set_email_calendar_notify_callback',
     'OPENCLAW_CAPABILITIES',
     'close_openclaw_client',
     'get_openclaw_client',

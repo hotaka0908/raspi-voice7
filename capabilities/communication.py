@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from .vision import capture_image_raw
+from .email_to_calendar import check_and_add_schedule
 from config import Config
 
 # Gmail API
@@ -304,7 +305,14 @@ class GmailSend(Capability):
             ).execute()
 
             to_name = to.split('@')[0]
-            return CapabilityResult.ok(f"{to_name}さんに送りました")
+            result_msg = f"{to_name}さんに送りました"
+
+            # 予定があればカレンダーに追加
+            calendar_msg = check_and_add_schedule(to, subject, body)
+            if calendar_msg:
+                result_msg += f"。{calendar_msg}"
+
+            return CapabilityResult.ok(result_msg)
 
         except HttpError:
             return CapabilityResult.fail("今はメールを送れません")
@@ -389,7 +397,14 @@ class GmailReply(Capability):
             ).execute()
 
             to_name = to.split('@')[0]
-            return CapabilityResult.ok(f"{to_name}さんに返信しました")
+            result_msg = f"{to_name}さんに返信しました"
+
+            # 予定があればカレンダーに追加
+            calendar_msg = check_and_add_schedule(to, subject, body)
+            if calendar_msg:
+                result_msg += f"。{calendar_msg}"
+
+            return CapabilityResult.ok(result_msg)
 
         except HttpError:
             return CapabilityResult.fail("今は返信できません")
