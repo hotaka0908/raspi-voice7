@@ -51,6 +51,9 @@ from capabilities import (
     start_reminder_thread,
     stop_reminder_thread,
     set_reminder_notify_callback,
+    start_email_calendar_thread,
+    stop_email_calendar_thread,
+    set_email_calendar_notify_callback,
     stop_music_player,
     set_music_audio_callbacks,
     is_music_active,
@@ -851,6 +854,10 @@ async def main_async():
     set_reminder_notify_callback(reminder_notify)
     start_reminder_thread()
 
+    # メール→カレンダー自動登録スレッド
+    set_email_calendar_notify_callback(reminder_notify)
+    start_email_calendar_thread()
+
     try:
         while running:
             # セッションタイムアウトチェック（voice_message_mode中はスキップ）
@@ -936,6 +943,7 @@ async def main_async():
         stop_alarm_thread()
         stop_lifelog_thread()
         stop_reminder_thread()
+        stop_email_calendar_thread()
         stop_music_player()
         # OpenClawクリーンアップ
         close_openclaw_client()
