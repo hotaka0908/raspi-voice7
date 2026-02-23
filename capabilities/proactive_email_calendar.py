@@ -107,16 +107,16 @@ def _get_openai_client() -> Optional[OpenAI]:
 
 
 def _fetch_recent_emails(max_results: int = 10) -> List[Dict[str, Any]]:
-    """最近のメールを取得"""
+    """最近の送信済みメールを取得"""
     gmail_service = _get_gmail_service()
     if not gmail_service:
         return []
 
     try:
-        # 過去24時間の未読メールを取得
+        # 過去24時間の送信済みメールを取得
         results = gmail_service.users().messages().list(
             userId='me',
-            q="is:unread newer_than:1d",
+            q="in:sent newer_than:1d",
             maxResults=max_results
         ).execute()
 
@@ -181,22 +181,23 @@ def _extract_schedule_from_email(email: Dict[str, Any]) -> Optional[Dict[str, An
 
     today = datetime.now()
 
-    prompt = f"""以下のメールから、カレンダーに登録すべき予定情報を抽出してください。
+    prompt = f"""以下は自分が送信したメールです。自分が約束した予定をカレンダーに登録すべきか判断してください。
 
-【判断基準】
+【登録すべき例】
+- 「○日○時に会いましょう」「○日○時でお願いします」
+- 打ち合わせ、会議、ミーティング、食事、飲み会の約束
 - 具体的な日時（○月○日、○日○時、明日○時など）が明記されている
-- 打ち合わせ、会議、ミーティング、食事、飲み会、イベントなど
-- 場所も含まれていると良い
 
-【抽出しない例】
+【登録しない例】
 - 曖昧な日時（「来週あたり」「今度」「近いうち」）
-- 期限やデッドライン（「○日までに提出」は予定ではない）
+- 期限やデッドライン（「○日までに提出します」は予定ではない）
 - 過去の日付
+- 相手に日程を聞いているだけ（「いつがいいですか？」）
 
 今日は{today.strftime('%Y年%m月%d日')}です。
 
 ---
-送信者: {email['from']}
+宛先: {email['from']}
 件名: {email['subject']}
 本文:
 {email['body']}
