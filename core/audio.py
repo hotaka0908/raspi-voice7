@@ -300,30 +300,23 @@ def generate_reset_sound() -> Optional[bytes]:
 
 
 def generate_music_start_sound() -> Optional[bytes]:
-    """音楽開始準備音を生成（カホン風の低音パーカッション）"""
+    """音楽開始準備音を生成（柔らかいポップ音）"""
     try:
         sample_rate = 48000
-        duration = 0.25
+        duration = 0.15
 
         t = np.linspace(0, duration, int(sample_rate * duration), False)
 
-        # 低音のベース（80Hz、急速減衰）
-        bass_freq = 80
-        bass_decay = np.exp(-t * 15)
-        bass = np.sin(2 * np.pi * bass_freq * t) * bass_decay
+        # 柔らかいフェードイン・フェードアウト
+        fade_in = np.minimum(t / 0.03, 1)
+        fade_out = np.minimum((duration - t) / 0.08, 1)
+        envelope = fade_in * fade_out
 
-        # アタック音（高周波ノイズ、超急速減衰）
-        attack_decay = np.exp(-t * 50)
-        attack = np.random.uniform(-1, 1, len(t)) * attack_decay * 0.3
+        # 温かみのある低めの音（220Hz = A3）
+        tone = np.sin(2 * np.pi * 220 * t) * envelope
 
-        # ミッド（150Hz、中程度の減衰）
-        mid_freq = 150
-        mid_decay = np.exp(-t * 20)
-        mid = np.sin(2 * np.pi * mid_freq * t) * mid_decay * 0.5
-
-        # 合成
-        sound = (bass + attack + mid) * 0.5 * 32767
-        sound = np.clip(sound, -32767, 32767).astype(np.int16)
+        # 音量を控えめに
+        sound = (tone * 0.15 * 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
