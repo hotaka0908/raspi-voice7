@@ -858,9 +858,9 @@ async def main_async():
 
     try:
         while running:
-            # セッションタイムアウトチェック（voice_message_mode中はスキップ）
+            # セッションタイムアウトチェック（voice_message_mode中・応答中はスキップ）
             if client.last_response_time and client.is_connected:
-                if not client.check_voice_message_timeout():  # voice_message_mode中はリセットしない
+                if not client.check_voice_message_timeout() and not client.is_responding:
                     elapsed = time.time() - client.last_response_time
                     if elapsed >= Config.SESSION_RESET_TIMEOUT:
                         logger.info("--- セッションリセット ---")
