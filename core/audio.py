@@ -300,24 +300,30 @@ def generate_reset_sound() -> Optional[bytes]:
 
 
 def generate_music_start_sound() -> Optional[bytes]:
-    """音楽開始準備音を生成（上昇する3音）"""
+    """音楽開始準備音を生成（カホン風の低音パーカッション）"""
     try:
         sample_rate = 48000
-        frequencies = [523, 659, 784]  # C5, E5, G5（メジャーコード上昇）
-        duration = 0.12
-        gap_duration = 0.03
+        duration = 0.25
 
-        sounds = []
-        for i, freq in enumerate(frequencies):
-            t = np.linspace(0, duration, int(sample_rate * duration), False)
-            envelope = np.minimum(t / 0.02, 1) * np.minimum((duration - t) / 0.02, 1)
-            tone = (np.sin(2 * np.pi * freq * t) * envelope * 0.3 * 32767).astype(np.int16)
-            sounds.append(tone)
-            if i < len(frequencies) - 1:
-                gap = np.zeros(int(sample_rate * gap_duration), dtype=np.int16)
-                sounds.append(gap)
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
 
-        sound = np.concatenate(sounds)
+        # 低音のベース（80Hz、急速減衰）
+        bass_freq = 80
+        bass_decay = np.exp(-t * 15)
+        bass = np.sin(2 * np.pi * bass_freq * t) * bass_decay
+
+        # アタック音（高周波ノイズ、超急速減衰）
+        attack_decay = np.exp(-t * 50)
+        attack = np.random.uniform(-1, 1, len(t)) * attack_decay * 0.3
+
+        # ミッド（150Hz、中程度の減衰）
+        mid_freq = 150
+        mid_decay = np.exp(-t * 20)
+        mid = np.sin(2 * np.pi * mid_freq * t) * mid_decay * 0.5
+
+        # 合成
+        sound = (bass + attack + mid) * 0.5 * 32767
+        sound = np.clip(sound, -32767, 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
