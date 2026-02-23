@@ -709,6 +709,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         last_button_press_time = 0  # リセット後はタイムスタンプをクリア
                         client.needs_session_reset = True
                         client.last_response_time = None
+                        client.last_audio_time = None
                         # リセット音を再生
                         reset_sound = generate_reset_sound()
                         if reset_sound:
@@ -752,6 +753,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         continue
                     else:
                         client.last_response_time = None
+                        client.last_audio_time = None
 
                         # 音楽再生中なら停止してセッションリセット（ダブルクリックと同じ処理）
                         if is_music_active():
@@ -861,11 +863,16 @@ async def main_async():
             # セッションタイムアウトチェック（voice_message_mode中・応答中はスキップ）
             if client.last_response_time and client.is_connected:
                 if not client.check_voice_message_timeout() and not client.is_responding:
-                    elapsed = time.time() - client.last_response_time
+                    # 最後の応答時間と最後の音声再生時間の遅い方を基準にする
+                    last_activity = client.last_response_time
+                    if client.last_audio_time and client.last_audio_time > last_activity:
+                        last_activity = client.last_audio_time
+                    elapsed = time.time() - last_activity
                     if elapsed >= Config.SESSION_RESET_TIMEOUT:
                         logger.info("--- セッションリセット ---")
                         client.needs_session_reset = True
                         client.last_response_time = None
+                        client.last_audio_time = None
 
             # セッションリセット
             if client.needs_session_reset and client.is_connected:

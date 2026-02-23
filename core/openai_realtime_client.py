@@ -39,6 +39,7 @@ class OpenAIRealtimeClient:
         self.reconnect_count = 0
         self.needs_session_reset = False
         self.last_response_time = None
+        self.last_audio_time = None  # 最後に音声を再生した時間
 
         # 音声メッセージモード
         self.voice_message_mode = False
@@ -242,6 +243,7 @@ class OpenAIRealtimeClient:
             if audio_base64:
                 audio_data = base64.b64decode(audio_base64)
                 self.audio_handler.play_audio_chunk(audio_data)
+                self.last_audio_time = time.time()
 
         # 音声トランスクリプト
         elif event_type == "response.audio_transcript.delta":
