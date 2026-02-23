@@ -46,7 +46,8 @@ def _get_openai_client() -> Optional[OpenAI]:
     if not OPENAI_AVAILABLE:
         return None
     try:
-        return OpenAI(api_key=Config.OPENAI_API_KEY)
+        api_key = Config.get_api_key()
+        return OpenAI(api_key=api_key)
     except Exception:
         return None
 
