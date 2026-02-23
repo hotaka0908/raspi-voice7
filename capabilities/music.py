@@ -12,9 +12,12 @@ import time
 import os
 import signal
 from typing import Any, Dict, Optional
+from pathlib import Path
 
 from .base import Capability, CapabilityCategory, CapabilityResult
-from core.audio import generate_music_start_sound
+
+# レコードノイズファイルのパス
+_VINYL_NOISE_PATH = Path(__file__).parent.parent / "assets" / "vinyl_noise.wav"
 
 
 # 音楽プレイヤー状態管理
@@ -86,16 +89,6 @@ def _play_youtube(query: str) -> bool:
     # 既存の再生を停止（オーディオは再開しない、新しい曲を再生するため）
     _kill_player(restart_audio=False)
 
-    # 音楽開始準備音を再生（読み込み中の無音を埋める）
-    if _play_audio_callback:
-        try:
-            start_sound = generate_music_start_sound()
-            if start_sound:
-                _play_audio_callback(start_sound)
-                time.sleep(2.0)  # レコードノイズが鳴り終わるまで待つ
-        except Exception:
-            pass
-
     # メインのオーディオストリームを停止（デバイス競合回避）
     if _stop_audio_callback:
         try:
@@ -104,18 +97,21 @@ def _play_youtube(query: str) -> bool:
             pass
 
     try:
-        # yt-dlpで検索してmpvで再生
-        # --no-video: 音声のみ
-        # --ytdl-format: 音声のみの最高品質
-        # --volume: 音量（70%）
+        # mpvでレコードノイズ→YouTube音楽を連続再生
+        # レコードノイズが即座に再生され、その間にYouTubeを読み込む
         cmd = [
             "mpv",
             "--no-video",
             "--ytdl-format=bestaudio",
             "--volume=60",
             "--really-quiet",
-            f"ytdl://ytsearch1:{query}"
         ]
+
+        # レコードノイズファイルが存在すれば先に再生
+        if _VINYL_NOISE_PATH.exists():
+            cmd.append(str(_VINYL_NOISE_PATH))
+
+        cmd.append(f"ytdl://ytsearch1:{query}")
 
         with _player_lock:
             _player_process = subprocess.Popen(
