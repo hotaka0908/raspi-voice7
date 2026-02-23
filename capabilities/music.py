@@ -92,7 +92,7 @@ def _play_youtube(query: str) -> bool:
             start_sound = generate_music_start_sound()
             if start_sound:
                 _play_audio_callback(start_sound)
-                time.sleep(0.5)  # 音が鳴り終わるまで待つ
+                time.sleep(2.0)  # レコードノイズが鳴り終わるまで待つ
         except Exception:
             pass
 

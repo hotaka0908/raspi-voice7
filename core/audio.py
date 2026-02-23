@@ -300,23 +300,44 @@ def generate_reset_sound() -> Optional[bytes]:
 
 
 def generate_music_start_sound() -> Optional[bytes]:
-    """音楽開始準備音を生成（柔らかいポップ音）"""
+    """音楽開始準備音を生成（レコードノイズ）"""
     try:
         sample_rate = 48000
-        duration = 0.15
+        duration = 2.0
 
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        num_samples = int(sample_rate * duration)
+        t = np.linspace(0, duration, num_samples, False)
 
-        # 柔らかいフェードイン・フェードアウト
-        fade_in = np.minimum(t / 0.03, 1)
-        fade_out = np.minimum((duration - t) / 0.08, 1)
-        envelope = fade_in * fade_out
+        # ベースのヒスノイズ（ブラウンノイズ風 = 低周波寄り）
+        white = np.random.uniform(-1, 1, num_samples)
+        # 簡易ローパスフィルタで温かみを出す
+        brown = np.zeros(num_samples)
+        brown[0] = white[0]
+        for i in range(1, num_samples):
+            brown[i] = brown[i-1] * 0.98 + white[i] * 0.02
+        brown = brown / np.max(np.abs(brown)) * 0.3
 
-        # 温かみのある低めの音（220Hz = A3）
-        tone = np.sin(2 * np.pi * 220 * t) * envelope
+        # ランダムなパチパチ音（クリック）
+        clicks = np.zeros(num_samples)
+        num_clicks = np.random.randint(8, 15)
+        for _ in range(num_clicks):
+            pos = np.random.randint(0, num_samples)
+            intensity = np.random.uniform(0.1, 0.4)
+            click_len = np.random.randint(20, 80)
+            end_pos = min(pos + click_len, num_samples)
+            click_env = np.exp(-np.arange(end_pos - pos) / 10)
+            clicks[pos:end_pos] += intensity * click_env * np.random.choice([-1, 1])
 
-        # 音量を控えめに
-        sound = (tone * 0.15 * 32767).astype(np.int16)
+        # 合成
+        sound = brown + clicks
+
+        # フェードイン・フェードアウト
+        fade_in = np.minimum(t / 0.3, 1)
+        fade_out = np.minimum((duration - t) / 0.5, 1)
+        sound = sound * fade_in * fade_out
+
+        # 音量調整
+        sound = (sound * 0.25 * 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
