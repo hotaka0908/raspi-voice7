@@ -410,13 +410,13 @@ class VideoCallManager:
             self._audio_output = pyaudio.PyAudio()
             self._output_stream = self._audio_output.open(
                 format=pyaudio.paInt16,
-                channels=1,
+                channels=2,  # ステレオ（スマホからのオーディオはステレオ）
                 rate=48000,
                 output=True,
                 output_device_index=Config.OUTPUT_DEVICE_INDEX,
                 frames_per_buffer=960
             )
-            logger.info("リモートオーディオ出力ストリーム開始")
+            logger.info("リモートオーディオ出力ストリーム開始（ステレオ）")
 
             frame_count = 0
             while self.is_in_call:
