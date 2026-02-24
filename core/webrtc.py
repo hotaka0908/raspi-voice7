@@ -423,14 +423,22 @@ class VideoCallManager:
                 try:
                     frame = await asyncio.wait_for(track.recv(), timeout=1.0)
                     frame_count += 1
-                    if frame_count <= 3 or frame_count % 100 == 0:
-                        logger.info(f"リモートオーディオフレーム受信: {frame_count}")
 
                     # PyAVフレームからバイト列を取得
                     if hasattr(frame, 'to_ndarray'):
-                        audio_data = frame.to_ndarray().tobytes()
+                        audio_array = frame.to_ndarray()
+                        audio_data = audio_array.tobytes()
                     else:
                         audio_data = bytes(frame.planes[0])
+
+                    if frame_count <= 3:
+                        logger.info(f"リモートオーディオフレーム {frame_count}: "
+                                    f"samples={getattr(frame, 'samples', '?')}, "
+                                    f"rate={getattr(frame, 'sample_rate', '?')}, "
+                                    f"format={getattr(frame, 'format', '?')}, "
+                                    f"data_len={len(audio_data)}")
+                    elif frame_count % 100 == 0:
+                        logger.info(f"リモートオーディオフレーム受信: {frame_count}")
 
                     if audio_data and self._output_stream:
                         self._output_stream.write(audio_data)
