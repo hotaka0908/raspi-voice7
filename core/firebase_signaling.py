@@ -120,8 +120,24 @@ class FirebaseSignaling:
         response = requests.put(url, json=status)
         return response.status_code == 200
 
+    def cleanup_old_sessions(self) -> int:
+        """古いビデオ通話セッションをクリーンアップ"""
+        try:
+            url = f"{self.db_url}/videocall.json"
+            response = requests.delete(url)
+            if response.status_code == 200:
+                logger.info("古いビデオ通話セッションを削除しました")
+                return 1
+            return 0
+        except Exception as e:
+            logger.warning(f"セッションクリーンアップエラー: {e}")
+            return 0
+
     def start_listening(self) -> None:
         """シグナリングイベント監視開始"""
+        # 起動時に古いセッションをクリーンアップ
+        self.cleanup_old_sessions()
+
         self.running = True
         self._last_seen_sessions = set()
         self._last_caller_candidates = {}

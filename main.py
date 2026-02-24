@@ -301,16 +301,8 @@ def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     elif _signaling and _signaling.current_session_id:
         current_session = _signaling.current_session_id
 
-    # アクティブなセッションがない場合
+    # アクティブなセッションがない場合は無視
     if not current_session:
-        logger.debug(f"ICE候補受信（セッションなし）: session_id={session_id}")
-        # VideoCallManagerのキューに追加（後で処理される）
-        video_manager = get_video_call_manager()
-        if _main_loop:
-            asyncio.run_coroutine_threadsafe(
-                video_manager.add_ice_candidate(candidate),
-                _main_loop
-            )
         return
 
     if session_id != current_session:
