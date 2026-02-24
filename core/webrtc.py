@@ -393,6 +393,18 @@ class VideoCallManager:
 
     async def _play_remote_audio(self, track: MediaStreamTrack):
         """リモートオーディオを再生"""
+        logger.info(f"リモートオーディオ再生開始: is_in_call={self.is_in_call}")
+
+        # is_in_callがTrueになるまで少し待つ（接続完了前にon_trackが発火する場合）
+        for _ in range(50):  # 最大5秒待機
+            if self.is_in_call:
+                break
+            await asyncio.sleep(0.1)
+
+        if not self.is_in_call:
+            logger.warning("リモートオーディオ再生: is_in_callがFalseのため中止")
+            return
+
         try:
             import pyaudio
             self._audio_output = pyaudio.PyAudio()
@@ -404,10 +416,16 @@ class VideoCallManager:
                 output_device_index=Config.OUTPUT_DEVICE_INDEX,
                 frames_per_buffer=960
             )
+            logger.info("リモートオーディオ出力ストリーム開始")
 
+            frame_count = 0
             while self.is_in_call:
                 try:
                     frame = await asyncio.wait_for(track.recv(), timeout=1.0)
+                    frame_count += 1
+                    if frame_count <= 3 or frame_count % 100 == 0:
+                        logger.info(f"リモートオーディオフレーム受信: {frame_count}")
+
                     # PyAVフレームからバイト列を取得
                     if hasattr(frame, 'to_ndarray'):
                         audio_data = frame.to_ndarray().tobytes()
@@ -417,10 +435,13 @@ class VideoCallManager:
                     if audio_data and self._output_stream:
                         self._output_stream.write(audio_data)
                 except asyncio.TimeoutError:
+                    logger.debug(f"リモートオーディオ: タイムアウト (is_in_call={self.is_in_call})")
                     continue
                 except Exception as e:
-                    logger.debug(f"リモートオーディオ再生エラー: {e}")
+                    logger.warning(f"リモートオーディオ再生エラー: {e}")
                     break
+
+            logger.info(f"リモートオーディオ再生終了: {frame_count}フレーム受信")
 
         except Exception as e:
             logger.error(f"オーディオ出力エラー: {e}")
