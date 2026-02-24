@@ -301,12 +301,21 @@ def on_ice_candidate_received(session_id: str, candidate: dict) -> None:
     elif _signaling and _signaling.current_session_id:
         current_session = _signaling.current_session_id
 
-    # アクティブなセッションがない場合は無視
+    # アクティブなセッションがない場合
     if not current_session:
+        logger.debug(f"ICE候補受信（セッションなし）: session_id={session_id}")
+        # VideoCallManagerのキューに追加（後で処理される）
+        video_manager = get_video_call_manager()
+        if _main_loop:
+            asyncio.run_coroutine_threadsafe(
+                video_manager.add_ice_candidate(candidate),
+                _main_loop
+            )
         return
 
     if session_id != current_session:
         # 異なるセッションのICE候補は無視
+        logger.debug(f"ICE候補無視（セッション不一致）: expected={current_session}, got={session_id}")
         return
 
     logger.info(f"ICE候補受信: {candidate.get('candidate', '')[:50]}...")
@@ -376,7 +385,6 @@ async def accept_incoming_call() -> bool:
 
     session_id = _pending_incoming_call["session_id"]
     session = _pending_incoming_call["session"]
-    _pending_incoming_call = None
 
     logger.info("=== ビデオ通話応答 ===")
 
@@ -389,8 +397,9 @@ async def accept_incoming_call() -> bool:
             audio_handler.stop_input_stream()
             logger.info("メインオーディオストリーム停止")
 
-        # 応答ステータス更新
+        # 応答ステータス更新（ICE候補受信のためcurrent_session_idを先に設定）
         _signaling.accept_call(session_id)
+        _pending_incoming_call = None
 
         # PeerConnection作成
         if not await video_manager.create_peer_connection():

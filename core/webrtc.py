@@ -468,9 +468,31 @@ class VideoCallManager:
         try:
             offer = await self.pc.createOffer()
             await self.pc.setLocalDescription(offer)
+
+            # ICE収集完了を待つ（aiortcはicecandidateイベントを発火しないため）
+            logger.info(f"ICE収集開始: {self.pc.iceGatheringState}")
+            timeout = 5.0
+            elapsed = 0.0
+            while self.pc.iceGatheringState != "complete" and elapsed < timeout:
+                await asyncio.sleep(0.1)
+                elapsed += 0.1
+
+            logger.info(f"ICE収集完了/タイムアウト: {self.pc.iceGatheringState}, 経過={elapsed:.1f}秒")
+
+            # 最新のローカルSDP（ICE候補含む）を取得
+            local_desc = self.pc.localDescription
+
+            # ICE候補の数をカウント
+            ice_count = local_desc.sdp.count('a=candidate:')
+            logger.info(f"Offer SDPに含まれるICE候補数: {ice_count}")
+
+            # SDPからICE候補を抽出してFirebaseに送信
+            if self.on_ice_candidate:
+                await self._send_ice_candidates_from_sdp(local_desc.sdp)
+
             return {
-                "type": offer.type,
-                "sdp": offer.sdp,
+                "type": local_desc.type,
+                "sdp": local_desc.sdp,
             }
         except Exception as e:
             logger.error(f"Offer作成エラー: {e}")

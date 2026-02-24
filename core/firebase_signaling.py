@@ -131,7 +131,7 @@ class FirebaseSignaling:
 
         # 動的ポーリング間隔
         self._idle_interval = 2.0      # 待機中: 2秒
-        self._active_interval = 0.3    # 通話中: 0.3秒
+        self._active_interval = 0.1    # 通話中/接続確立中: 0.1秒（ICE候補交換を高速化）
 
         def poll_loop():
             while self.running:
@@ -148,7 +148,7 @@ class FirebaseSignaling:
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()
-        logger.info(f"シグナリング監視開始（待機: {self._idle_interval}秒, 通話中: {self._active_interval}秒）")
+        logger.info(f"シグナリング監視開始（待機: {self._idle_interval}s, 通話中: {self._active_interval}s）")
 
     def stop_listening(self) -> None:
         """監視停止"""
