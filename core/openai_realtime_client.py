@@ -52,6 +52,7 @@ class OpenAIRealtimeClient:
     def _get_session_config(self) -> Dict[str, Any]:
         """セッション設定を取得"""
         return {
+            "type": "realtime",
             "modalities": ["text", "audio"],
             "instructions": get_system_prompt(),
             "voice": Config.VOICE,
@@ -71,7 +72,6 @@ class OpenAIRealtimeClient:
             url = f"wss://api.openai.com/v1/realtime?model={Config.MODEL}"
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "OpenAI-Beta": "realtime=v1"
             }
 
             self.ws = await websockets.connect(url, additional_headers=headers)
@@ -238,7 +238,7 @@ class OpenAIRealtimeClient:
             self._current_response_id = event.get("response", {}).get("id")
 
         # 音声デルタ
-        elif event_type == "response.audio.delta":
+        elif event_type == "response.output_audio.delta":
             audio_base64 = event.get("delta", "")
             if audio_base64:
                 audio_data = base64.b64decode(audio_base64)
@@ -246,12 +246,12 @@ class OpenAIRealtimeClient:
                 self.last_audio_time = time.time()
 
         # 音声トランスクリプト
-        elif event_type == "response.audio_transcript.delta":
+        elif event_type == "response.output_audio_transcript.delta":
             text = event.get("delta", "")
             if text:
                 logger.debug(f"[AI transcript delta] {text}")
 
-        elif event_type == "response.audio_transcript.done":
+        elif event_type == "response.output_audio_transcript.done":
             text = event.get("transcript", "")
             if text:
                 logger.info(f"[AI] {text}")
