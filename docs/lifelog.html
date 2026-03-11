@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>ライフログ - raspi-voice</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100%;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: #4ade80;
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .header .back-link {
+            color: white;
+            text-decoration: none;
+            font-size: 1.5rem;
+            padding: 5px;
+        }
+
+        .header .view-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .header .view-toggle:active {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Main container */
+        .container {
+            padding-top: 70px;
+            padding-bottom: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Calendar View */
+        .calendar-view {
+            padding: 15px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .calendar-header .month-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .calendar-header button {
+            background: #4ade80;
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .calendar-header button:active {
+            background: #22c55e;
+        }
+
+        .calendar-grid {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+        }
+
+        .calendar-weekdays span {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .calendar-weekdays span:first-child {
+            color: #ef4444;
+        }
+
+        .calendar-weekdays span:last-child {
+            color: #3b82f6;
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: #f5f5f5;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+        }
+
+        .calendar-day.today {
+            background: #e8f5e9;
+        }
+
+        .calendar-day.selected {
+            background: #4ade80;
+            color: white;
+        }
+
+        .calendar-day.has-photos::after {
+            content: '';
+            position: absolute;
+            bottom: 6px;
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+        }
+
+        .calendar-day.selected.has-photos::after {
+            background: white;
+        }
+
+        .calendar-day .day-number {
+            font-size: 0.95rem;
+        }
+
+        /* Folder View */
+        .folder-view {
+            padding: 15px;
+            display: none;
+        }
+
+        .folder-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .folder-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .folder-item:active {
+            transform: scale(0.98);
+        }
+
+        .folder-item .folder-icon {
+            font-size: 2rem;
+        }
+
+        .folder-item .folder-info {
+            flex: 1;
+        }
+
+        .folder-item .folder-date {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .folder-item .folder-count {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .folder-item .folder-preview {
+            display: flex;
+            gap: 4px;
+        }
+
+        .folder-item .folder-preview img {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        /* Photo Grid */
+        .photo-section {
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .photo-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .photo-section-header h2 {
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .photo-section-header .photo-count {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .photo-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            background: #e0e0e0;
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.2s;
+        }
+
+        .photo-item:active img {
+            transform: scale(1.05);
+        }
+
+        .photo-item .photo-time {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            color: white;
+            font-size: 0.7rem;
+            padding: 15px 6px 6px;
+            text-align: center;
+        }
+
+        /* Photo Modal */
+        .photo-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column;
+            z-index: 300;
+        }
+
+        .photo-modal.active {
+            display: flex;
+        }
+
+        .photo-modal .modal-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .photo-modal .modal-header .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .photo-modal .modal-header .photo-info {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .photo-modal .modal-body {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .photo-modal .modal-body img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .photo-modal .modal-footer {
+            padding: 15px 20px;
+            color: white;
+            text-align: center;
+        }
+
+        .photo-modal .modal-footer .analysis {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
+        .photo-modal .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .photo-modal .nav-btn:active {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .photo-modal .nav-btn.prev {
+            left: 15px;
+        }
+
+        .photo-modal .nav-btn.next {
+            right: 15px;
+        }
+
+        /* Loading & Empty */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(74, 222, 128, 0.2);
+            border-top-color: #4ade80;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <a href="index.html" class="back-link">&larr;</a>
+        <h1>ライフログ</h1>
+        <button class="view-toggle" id="viewToggle">フォルダ</button>
+    </div>
+
+    <div class="container">
+        <!-- Calendar View -->
+        <div class="calendar-view" id="calendarView">
+            <div class="calendar-header">
+                <button id="prevMonth">&lt;</button>
+                <span class="month-title" id="monthTitle">2024年1月</span>
+                <button id="nextMonth">&gt;</button>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-weekdays">
+                    <span>日</span>
+                    <span>月</span>
+                    <span>火</span>
+                    <span>水</span>
+                    <span>木</span>
+                    <span>金</span>
+                    <span>土</span>
+                </div>
+                <div class="calendar-days" id="calendarDays"></div>
+            </div>
+        </div>
+
+        <!-- Folder View -->
+        <div class="folder-view" id="folderView">
+            <div class="folder-list" id="folderList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>読み込み中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo Section -->
+        <div class="photo-section" id="photoSection" style="display: none;">
+            <div class="photo-section-header">
+                <h2 id="photoDateTitle">2024年1月1日</h2>
+                <span class="photo-count" id="photoCount">0枚</span>
+            </div>
+            <div class="photo-grid" id="photoGrid"></div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div class="photo-modal" id="photoModal">
+        <div class="modal-header">
+            <span class="photo-info" id="modalPhotoInfo"></span>
+            <button class="close-btn" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <button class="nav-btn prev" id="prevPhoto">&lt;</button>
+            <img id="modalImg" src="" alt="Photo">
+            <button class="nav-btn next" id="nextPhoto">&gt;</button>
+        </div>
+        <div class="modal-footer">
+            <p class="analysis" id="modalAnalysis"></p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import firebaseConfig from './firebase-config.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // State
+        let currentView = 'calendar'; // 'calendar' or 'folder'
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth();
+        let selectedDate = null;
+        let allLifelogs = {}; // { 'YYYY-MM-DD': { 'HHMMSS': {...} } }
+        let currentPhotos = [];
+        let currentPhotoIndex = 0;
+
+        // DOM Elements
+        const viewToggle = document.getElementById('viewToggle');
+        const calendarView = document.getElementById('calendarView');
+        const folderView = document.getElementById('folderView');
+        const photoSection = document.getElementById('photoSection');
+        const calendarDays = document.getElementById('calendarDays');
+        const monthTitle = document.getElementById('monthTitle');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const folderList = document.getElementById('folderList');
+        const photoGrid = document.getElementById('photoGrid');
+        const photoDateTitle = document.getElementById('photoDateTitle');
+        const photoCount = document.getElementById('photoCount');
+        const photoModal = document.getElementById('photoModal');
+        const modalImg = document.getElementById('modalImg');
+        const modalPhotoInfo = document.getElementById('modalPhotoInfo');
+        const modalAnalysis = document.getElementById('modalAnalysis');
+        const closeModal = document.getElementById('closeModal');
+        const prevPhoto = document.getElementById('prevPhoto');
+        const nextPhoto = document.getElementById('nextPhoto');
+
+        // View Toggle
+        viewToggle.addEventListener('click', () => {
+            if (currentView === 'calendar') {
+                currentView = 'folder';
+                viewToggle.textContent = 'カレンダー';
+                calendarView.style.display = 'none';
+                folderView.style.display = 'block';
+                renderFolderView();
+            } else {
+                currentView = 'calendar';
+                viewToggle.textContent = 'フォルダ';
+                calendarView.style.display = 'block';
+                folderView.style.display = 'none';
+            }
+        });
+
+        // Calendar Navigation
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        });
+
+        // Render Calendar
+        function renderCalendar() {
+            const year = currentYear;
+            const month = currentMonth;
+
+            monthTitle.textContent = `${year}年${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            const today = new Date();
+            const todayStr = formatDate(today);
+
+            let html = '';
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                html += `<div class="calendar-day other-month"><span class="day-number">${day}</span></div>`;
+            }
+
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const hasPhotos = allLifelogs[dateStr] && Object.keys(allLifelogs[dateStr]).length > 0;
+
+                let classes = 'calendar-day';
+                if (isToday) classes += ' today';
+                if (isSelected) classes += ' selected';
+                if (hasPhotos) classes += ' has-photos';
+
+                html += `<div class="${classes}" data-date="${dateStr}"><span class="day-number">${day}</span></div>`;
+            }
+
+            // Next month days
+            const totalCells = firstDay + daysInMonth;
+            const remainingCells = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                html += `<div class="calendar-day other-month"><span class="day-number">${day}</span></div>`;
+            }
+
+            calendarDays.innerHTML = html;
+
+            // Add click handlers
+            document.querySelectorAll('.calendar-day:not(.other-month)').forEach(dayEl => {
+                dayEl.addEventListener('click', () => {
+                    const date = dayEl.dataset.date;
+                    selectDate(date);
+                });
+            });
+        }
+
+        // Select Date
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            renderCalendar();
+            showPhotosForDate(dateStr);
+        }
+
+        // Show Photos for Date
+        function showPhotosForDate(dateStr) {
+            const photos = allLifelogs[dateStr];
+
+            if (!photos || Object.keys(photos).length === 0) {
+                photoSection.style.display = 'block';
+                photoDateTitle.textContent = formatDateJapanese(dateStr);
+                photoCount.textContent = '0枚';
+                photoGrid.innerHTML = '<div class="empty-state"><div class="icon">📷</div><p>この日の写真はありません</p></div>';
+                return;
+            }
+
+            const sortedPhotos = Object.entries(photos)
+                .map(([time, data]) => ({ time, ...data }))
+                .sort((a, b) => a.timestamp - b.timestamp);
+
+            currentPhotos = sortedPhotos;
+
+            photoSection.style.display = 'block';
+            photoDateTitle.textContent = formatDateJapanese(dateStr);
+            photoCount.textContent = `${sortedPhotos.length}枚`;
+
+            photoGrid.innerHTML = sortedPhotos.map((photo, index) => `
+                <div class="photo-item" data-index="${index}">
+                    <img src="${photo.photoUrl}" alt="Lifelog" loading="lazy">
+                    <div class="photo-time">${photo.time || ''}</div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.photo-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const index = parseInt(item.dataset.index);
+                    openPhotoModal(index);
+                });
+            });
+        }
+
+        // Render Folder View
+        function renderFolderView() {
+            const dates = Object.keys(allLifelogs).sort().reverse();
+
+            if (dates.length === 0) {
+                folderList.innerHTML = '<div class="empty-state"><div class="icon">📁</div><p>ライフログはまだありません</p></div>';
+                return;
+            }
+
+            folderList.innerHTML = dates.map(dateStr => {
+                const photos = allLifelogs[dateStr];
+                const photoList = Object.values(photos);
+                const count = photoList.length;
+                const previews = photoList.slice(0, 3);
+
+                return `
+                    <div class="folder-item" data-date="${dateStr}">
+                        <div class="folder-icon">📁</div>
+                        <div class="folder-info">
+                            <div class="folder-date">${formatDateJapanese(dateStr)}</div>
+                            <div class="folder-count">${count}枚</div>
+                        </div>
+                        <div class="folder-preview">
+                            ${previews.map(p => `<img src="${p.photoUrl}" alt="" loading="lazy">`).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.folder-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const date = item.dataset.date;
+                    selectedDate = date;
+                    showPhotosForDate(date);
+
+                    // Scroll to photo section
+                    photoSection.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        }
+
+        // Photo Modal
+        function openPhotoModal(index) {
+            currentPhotoIndex = index;
+            updateModalContent();
+            photoModal.classList.add('active');
+        }
+
+        function updateModalContent() {
+            const photo = currentPhotos[currentPhotoIndex];
+            if (!photo) return;
+
+            modalImg.src = photo.photoUrl;
+            modalPhotoInfo.textContent = `${selectedDate} ${photo.time || ''}`;
+            modalAnalysis.textContent = photo.analysis || '';
+
+            // Update nav button visibility
+            prevPhoto.style.display = currentPhotoIndex > 0 ? 'block' : 'none';
+            nextPhoto.style.display = currentPhotoIndex < currentPhotos.length - 1 ? 'block' : 'none';
+        }
+
+        closeModal.addEventListener('click', () => {
+            photoModal.classList.remove('active');
+        });
+
+        prevPhoto.addEventListener('click', () => {
+            if (currentPhotoIndex > 0) {
+                currentPhotoIndex--;
+                updateModalContent();
+            }
+        });
+
+        nextPhoto.addEventListener('click', () => {
+            if (currentPhotoIndex < currentPhotos.length - 1) {
+                currentPhotoIndex++;
+                updateModalContent();
+            }
+        });
+
+        // Close modal on background click
+        photoModal.addEventListener('click', (e) => {
+            if (e.target === photoModal || e.target.classList.contains('modal-body')) {
+                photoModal.classList.remove('active');
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (!photoModal.classList.contains('active')) return;
+
+            if (e.key === 'Escape') {
+                photoModal.classList.remove('active');
+            } else if (e.key === 'ArrowLeft') {
+                prevPhoto.click();
+            } else if (e.key === 'ArrowRight') {
+                nextPhoto.click();
+            }
+        });
+
+        // Helper Functions
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateJapanese(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            return `${year}年${parseInt(month)}月${parseInt(day)}日`;
+        }
+
+        // Load Lifelogs from Firebase
+        function loadLifelogs() {
+            const lifelogsRef = ref(db, 'lifelogs');
+
+            onValue(lifelogsRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    allLifelogs = data;
+                } else {
+                    allLifelogs = {};
+                }
+
+                renderCalendar();
+                if (currentView === 'folder') {
+                    renderFolderView();
+                }
+                if (selectedDate) {
+                    showPhotosForDate(selectedDate);
+                }
+            });
+        }
+
+        // Initialize
+        loadLifelogs();
+        renderCalendar();
+    </script>
+</body>
+</html>
