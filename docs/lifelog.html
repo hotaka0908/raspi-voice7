@@ -434,6 +434,153 @@
             font-size: 4rem;
             margin-bottom: 15px;
         }
+
+        /* Display Mode Toggle */
+        .display-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .display-toggle button {
+            background: #e0e0e0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .display-toggle button.active {
+            background: #4ade80;
+            color: white;
+        }
+
+        .display-toggle button:active {
+            opacity: 0.8;
+        }
+
+        /* Diary View */
+        .diary-view {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .diary-header {
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .diary-header .diary-date {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .diary-header .diary-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .diary-content {
+            padding: 20px;
+        }
+
+        .diary-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .diary-entry:last-child {
+            border-bottom: none;
+        }
+
+        .diary-entry:hover {
+            background: #f9f9f9;
+            margin: 0 -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .diary-entry .entry-time {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4ade80;
+            min-width: 60px;
+            flex-shrink: 0;
+        }
+
+        .diary-entry .entry-content {
+            flex: 1;
+        }
+
+        .diary-entry .entry-text {
+            font-size: 1rem;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .diary-entry .entry-text.no-analysis {
+            color: #999;
+            font-style: italic;
+        }
+
+        .diary-entry .entry-thumbnail {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .diary-entry .entry-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .diary-entry .entry-thumbnails {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        .diary-entry .entry-thumbnails img {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .diary-entry .entry-thumbnails .more-photos {
+            font-size: 0.75rem;
+            color: #666;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .diary-entry .entry-count {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .diary-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -480,9 +627,13 @@
         <div class="photo-section" id="photoSection" style="display: none;">
             <div class="photo-section-header">
                 <h2 id="photoDateTitle">2024年1月1日</h2>
-                <span class="photo-count" id="photoCount">0枚</span>
+                <div class="display-toggle">
+                    <button id="gridModeBtn">写真</button>
+                    <button id="diaryModeBtn" class="active">日記</button>
+                </div>
             </div>
             <div class="photo-grid" id="photoGrid"></div>
+            <div class="diary-view" id="diaryView" style="display: none;"></div>
         </div>
     </div>
 
@@ -513,6 +664,7 @@
 
         // State
         let currentView = 'calendar'; // 'calendar' or 'folder'
+        let currentDisplayMode = 'diary'; // 'grid' or 'diary'
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth();
         let selectedDate = null;
@@ -531,8 +683,10 @@
         const nextMonthBtn = document.getElementById('nextMonth');
         const folderList = document.getElementById('folderList');
         const photoGrid = document.getElementById('photoGrid');
+        const diaryView = document.getElementById('diaryView');
         const photoDateTitle = document.getElementById('photoDateTitle');
-        const photoCount = document.getElementById('photoCount');
+        const gridModeBtn = document.getElementById('gridModeBtn');
+        const diaryModeBtn = document.getElementById('diaryModeBtn');
         const photoModal = document.getElementById('photoModal');
         const modalImg = document.getElementById('modalImg');
         const modalPhotoInfo = document.getElementById('modalPhotoInfo');
@@ -540,6 +694,26 @@
         const closeModal = document.getElementById('closeModal');
         const prevPhoto = document.getElementById('prevPhoto');
         const nextPhoto = document.getElementById('nextPhoto');
+
+        // Display Mode Toggle (Grid / Diary)
+        gridModeBtn.addEventListener('click', () => {
+            if (currentDisplayMode === 'grid') return;
+            currentDisplayMode = 'grid';
+            gridModeBtn.classList.add('active');
+            diaryModeBtn.classList.remove('active');
+            photoGrid.style.display = 'grid';
+            diaryView.style.display = 'none';
+        });
+
+        diaryModeBtn.addEventListener('click', () => {
+            if (currentDisplayMode === 'diary') return;
+            currentDisplayMode = 'diary';
+            diaryModeBtn.classList.add('active');
+            gridModeBtn.classList.remove('active');
+            photoGrid.style.display = 'none';
+            diaryView.style.display = 'block';
+            renderDiaryView();
+        });
 
         // View Toggle
         viewToggle.addEventListener('click', () => {
@@ -645,8 +819,8 @@
             if (!photos || Object.keys(photos).length === 0) {
                 photoSection.style.display = 'block';
                 photoDateTitle.textContent = formatDateJapanese(dateStr);
-                photoCount.textContent = '0枚';
                 photoGrid.innerHTML = '<div class="empty-state"><div class="icon">📷</div><p>この日の写真はありません</p></div>';
+                diaryView.innerHTML = '<div class="diary-empty">この日の記録はありません</div>';
                 return;
             }
 
@@ -658,8 +832,8 @@
 
             photoSection.style.display = 'block';
             photoDateTitle.textContent = formatDateJapanese(dateStr);
-            photoCount.textContent = `${sortedPhotos.length}枚`;
 
+            // Render photo grid
             photoGrid.innerHTML = sortedPhotos.map((photo, index) => `
                 <div class="photo-item" data-index="${index}">
                     <img src="${photo.photoUrl}" alt="Lifelog" loading="lazy">
@@ -667,13 +841,164 @@
                 </div>
             `).join('');
 
-            // Add click handlers
+            // Add click handlers for photo grid
             document.querySelectorAll('.photo-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const index = parseInt(item.dataset.index);
                     openPhotoModal(index);
                 });
             });
+
+            // Render diary view
+            renderDiaryView();
+
+            // Show correct view based on current mode
+            if (currentDisplayMode === 'grid') {
+                photoGrid.style.display = 'grid';
+                diaryView.style.display = 'none';
+            } else {
+                photoGrid.style.display = 'none';
+                diaryView.style.display = 'block';
+            }
+        }
+
+        // Render Diary View
+        function renderDiaryView() {
+            if (!selectedDate || currentPhotos.length === 0) {
+                diaryView.innerHTML = '<div class="diary-empty">この日の記録はありません</div>';
+                return;
+            }
+
+            const [year, month, day] = selectedDate.split('-');
+            const shortDate = `${parseInt(month)}/${parseInt(day)}`;
+
+            // Group photos by activity (consecutive same activities are merged)
+            const activityGroups = [];
+            let currentGroup = null;
+
+            currentPhotos.forEach((photo, index) => {
+                const activity = (photo.analysis || '').trim();
+
+                // Skip entries without analysis for grouping purposes
+                if (!activity) {
+                    // If no analysis, treat as separate entry
+                    if (currentGroup) {
+                        activityGroups.push(currentGroup);
+                        currentGroup = null;
+                    }
+                    activityGroups.push({
+                        activity: '',
+                        photos: [{ ...photo, originalIndex: index }],
+                        startTime: photo.time || '--:--',
+                        endTime: photo.time || '--:--'
+                    });
+                    return;
+                }
+
+                // Check if this activity is similar to current group
+                if (currentGroup && isSimilarActivity(currentGroup.activity, activity)) {
+                    currentGroup.photos.push({ ...photo, originalIndex: index });
+                    currentGroup.endTime = photo.time || currentGroup.endTime;
+                } else {
+                    if (currentGroup) {
+                        activityGroups.push(currentGroup);
+                    }
+                    currentGroup = {
+                        activity: activity,
+                        photos: [{ ...photo, originalIndex: index }],
+                        startTime: photo.time || '--:--',
+                        endTime: photo.time || '--:--'
+                    };
+                }
+            });
+
+            if (currentGroup) {
+                activityGroups.push(currentGroup);
+            }
+
+            let entriesHtml = activityGroups.map(group => {
+                const firstPhoto = group.photos[0];
+                const photoCount = group.photos.length;
+                const hasAnalysis = group.activity.length > 0;
+
+                // Time display
+                let timeDisplay;
+                if (group.startTime === group.endTime || photoCount === 1) {
+                    timeDisplay = group.startTime;
+                } else {
+                    timeDisplay = `${group.startTime}`;
+                }
+
+                const activityText = hasAnalysis ? group.activity : '(記録なし)';
+
+                return `
+                    <div class="diary-entry" data-first-index="${firstPhoto.originalIndex}">
+                        <div class="entry-time">${timeDisplay}</div>
+                        <div class="entry-content">
+                            <div class="entry-text ${hasAnalysis ? '' : 'no-analysis'}">
+                                ${activityText}
+                            </div>
+                        </div>
+                        <div class="entry-thumbnails">
+                            ${group.photos.slice(0, 2).map(p => `<img src="${p.photoUrl}" alt="" loading="lazy">`).join('')}
+                            ${photoCount > 2 ? `<span class="more-photos">+${photoCount - 2}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            diaryView.innerHTML = `
+                <div class="diary-header">
+                    <div class="diary-date">${shortDate}</div>
+                    <div class="diary-subtitle">今日やったこと</div>
+                </div>
+                <div class="diary-content">
+                    ${entriesHtml}
+                </div>
+            `;
+
+            // Add click handlers for diary entries
+            document.querySelectorAll('.diary-entry').forEach(entry => {
+                entry.addEventListener('click', () => {
+                    const index = parseInt(entry.dataset.firstIndex);
+                    openPhotoModal(index);
+                });
+            });
+        }
+
+        // Check if two activities are similar
+        function isSimilarActivity(activity1, activity2) {
+            if (!activity1 || !activity2) return false;
+
+            // Exact match
+            if (activity1 === activity2) return true;
+
+            // Extract keywords and check overlap
+            const keywords1 = extractKeywords(activity1);
+            const keywords2 = extractKeywords(activity2);
+
+            // Check if main keywords match
+            const commonKeywords = keywords1.filter(k => keywords2.includes(k));
+            return commonKeywords.length > 0;
+        }
+
+        // Extract main keywords from activity text
+        function extractKeywords(text) {
+            // Common location/activity keywords
+            const keywords = [];
+            const patterns = [
+                '公園', '散歩', '買い物', '食事', '仕事', 'PC', 'パソコン',
+                '料理', '掃除', '読書', '運動', 'ジム', '電車', '車',
+                '会議', 'ミーティング', '外出', '帰宅', '休憩'
+            ];
+
+            patterns.forEach(p => {
+                if (text.includes(p)) {
+                    keywords.push(p);
+                }
+            });
+
+            return keywords;
         }
 
         // Render Folder View
