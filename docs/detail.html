@@ -357,7 +357,7 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const functions = getFunctions(app, 'asia-northeast1');
+        const functions = getFunctions(app, 'us-central1');
         const askAboutDetail = httpsCallable(functions, 'askAboutDetail');
 
         // DOM elements
