@@ -351,14 +351,14 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
         import firebaseConfig from './firebase-config.js';
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const functions = getFunctions(app, 'us-central1');
-        const askAboutDetail = httpsCallable(functions, 'askAboutDetail');
+
+        // Cloud Functions URL
+        const FUNCTIONS_URL = 'https://us-central1-raspi-111.cloudfunctions.net/askAboutDetail';
 
         // DOM elements
         const container = document.getElementById('container');
@@ -517,18 +517,28 @@
             input.value = '';
 
             try {
-                const result = await askAboutDetail({
-                    question: question,
-                    imageUrl: info.imageUrl,
-                    briefAnalysis: info.briefAnalysis,
-                    detailAnalysis: info.detailAnalysis
+                const response = await fetch(FUNCTIONS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        imageUrl: info.imageUrl,
+                        briefAnalysis: info.briefAnalysis,
+                        detailAnalysis: info.detailAnalysis
+                    })
                 });
+
+                const result = await response.json();
 
                 // Remove loading message
                 document.getElementById(`loading-${id}`).remove();
 
-                // Show AI response
-                messagesDiv.innerHTML += `<div class="chat-message ai">${escapeHtmlGlobal(result.data.answer)}</div>`;
+                if (result.error) {
+                    messagesDiv.innerHTML += `<div class="chat-message error">${escapeHtmlGlobal(result.error)}</div>`;
+                } else {
+                    // Show AI response
+                    messagesDiv.innerHTML += `<div class="chat-message ai">${escapeHtmlGlobal(result.answer)}</div>`;
+                }
             } catch (error) {
                 console.error('Chat error:', error);
                 document.getElementById(`loading-${id}`).remove();

@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const OpenAI = require("openai");
@@ -22,11 +22,18 @@ function getOpenAI() {
 /**
  * 詳細情報についての追加質問に回答する
  */
-exports.askAboutDetail = onCall(async (request) => {
-  const { question, imageUrl, briefAnalysis, detailAnalysis } = request.data;
+exports.askAboutDetail = onRequest({ cors: true }, async (req, res) => {
+  // POSTのみ許可
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  const { question, imageUrl, briefAnalysis, detailAnalysis } = req.body;
 
   if (!question || !question.trim()) {
-    throw new HttpsError("invalid-argument", "質問を入力してください");
+    res.status(400).json({ error: "質問を入力してください" });
+    return;
   }
 
   try {
@@ -50,28 +57,17 @@ ${detailAnalysis || ""}
       },
     ];
 
-    // 画像がある場合はVisionモデルを使用
-    if (imageUrl) {
-      messages[1] = {
-        role: "user",
-        content: [
-          { type: "text", text: question },
-          { type: "image_url", image_url: { url: imageUrl } },
-        ],
-      };
-    }
-
     const response = await getOpenAI().chat.completions.create({
-      model: imageUrl ? "gpt-4o" : "gpt-4o-mini",
+      model: "gpt-4o-mini",
       messages: messages,
       max_tokens: 500,
     });
 
     const answer = response.choices[0].message.content;
 
-    return { answer };
+    res.json({ answer });
   } catch (error) {
     console.error("OpenAI API error:", error);
-    throw new HttpsError("internal", "回答を取得できませんでした");
+    res.status(500).json({ error: "回答を取得できませんでした" });
   }
 });
