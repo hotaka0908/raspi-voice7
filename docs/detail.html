@@ -316,7 +316,7 @@
                 const unreadClass = !info.read ? 'unread' : '';
                 const newBadge = !info.read ? '<span class="new-badge">新着</span>' : '';
                 // 「## 概要」セクションを除去（回答と重複するため）
-                const cleanedDetail = (info.detailAnalysis || '').replace(/## 概要[\s\S]*?(?=## |$)/, '');
+                const cleanedDetail = (info.detailAnalysis || '').replace(/## 概要[\s\S]*?(?=##|$)/, '').trim();
                 const detailHtml = marked.parse(cleanedDetail);
                 const safePrompt = escapeHtml(info.originalPrompt || 'これ何？');
                 const safeBrief = escapeHtml(info.briefAnalysis || '');
