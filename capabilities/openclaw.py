@@ -137,12 +137,18 @@ def close_openclaw_client():
     if _openclaw_client is not None:
         # WebSocket接続を適切に閉じる
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # 既存のイベントループが走っているか確認
             try:
-                loop.run_until_complete(_openclaw_client.disconnect())
-            finally:
-                loop.close()
+                running_loop = asyncio.get_running_loop()
+                # 既存ループがある場合はそのループで実行
+                future = asyncio.run_coroutine_threadsafe(
+                    _openclaw_client.disconnect(),
+                    running_loop
+                )
+                future.result(timeout=5)
+            except RuntimeError:
+                # イベントループが走っていない場合は新規作成
+                asyncio.run(_openclaw_client.disconnect())
         except Exception:
             pass  # 終了時のエラーは無視
 

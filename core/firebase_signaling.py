@@ -154,12 +154,14 @@ class FirebaseSignaling:
                 # 削除条件:
                 # 1. 終了済みセッション
                 # 2. 自分のデバイスが関与 かつ 古いセッション（1時間以上前）
+                #    ただし created_at が未設定(0)の場合は削除しない
                 should_delete = False
 
                 if status in ("ended", "rejected"):
                     should_delete = True
                 elif caller == self.device_id or callee == self.device_id:
-                    if current_time - created_at > max_age_ms:
+                    # created_at が設定されている場合のみ古いかどうか判定
+                    if created_at > 0 and current_time - created_at > max_age_ms:
                         should_delete = True
 
                 if should_delete:

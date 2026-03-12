@@ -598,7 +598,7 @@ def on_voice_message_received(message):
             messenger.mark_as_played(message.get("id"))
             logger.info(f"[受信] メッセージ処理完了: id={msg_id}")
         else:
-            logger.error(f"[受信] WAV変換失敗: id={msg_id} - 次回ポーリングで再試行します")
+            logger.error(f"[受信] WAV変換失敗: id={msg_id} - 再起動後に再試行されます")
 
     except Exception as e:
         logger.error(f"[受信] メッセージ受信エラー: id={msg_id}, error={e}")
