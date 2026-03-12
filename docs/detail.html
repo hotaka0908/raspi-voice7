@@ -231,6 +231,101 @@
             border-radius: 10px;
             margin-left: 10px;
         }
+
+        /* Chat section */
+        .chat-section {
+            border-top: 1px solid #eee;
+            padding: 15px;
+            background: #fafafa;
+        }
+
+        .chat-section .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .chat-section .chat-header:hover {
+            color: #4ade80;
+        }
+
+        .chat-input-area {
+            display: none;
+        }
+
+        .chat-input-area.active {
+            display: block;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: #4ade80;
+        }
+
+        .chat-send-btn {
+            padding: 10px 16px;
+            background: #4ade80;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .chat-send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .chat-messages {
+            margin-top: 12px;
+        }
+
+        .chat-message {
+            padding: 10px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .chat-message.user {
+            background: #e8f5e9;
+            margin-left: 20%;
+        }
+
+        .chat-message.ai {
+            background: white;
+            border: 1px solid #eee;
+            margin-right: 20%;
+        }
+
+        .chat-message.loading {
+            color: #999;
+            font-style: italic;
+        }
+
+        .chat-message.error {
+            background: #fee;
+            color: #c00;
+        }
     </style>
 </head>
 <body>
@@ -256,11 +351,14 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
         import firebaseConfig from './firebase-config.js';
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const functions = getFunctions(app, 'asia-northeast1');
+        const askAboutDetail = httpsCallable(functions, 'askAboutDetail');
 
         // DOM elements
         const container = document.getElementById('container');
@@ -337,6 +435,19 @@
                             <span>${formatTime(info.timestamp)}</span>
                             ${newBadge}
                         </div>
+                        <div class="chat-section">
+                            <div class="chat-header" data-id="${info.id}">
+                                <span>&#x1F4AC;</span>
+                                <span>もっと聞く</span>
+                            </div>
+                            <div class="chat-input-area" id="chat-area-${info.id}">
+                                <div class="chat-input-wrapper">
+                                    <input type="text" class="chat-input" id="chat-input-${info.id}" placeholder="質問を入力...">
+                                    <button class="chat-send-btn" data-id="${info.id}">送信</button>
+                                </div>
+                                <div class="chat-messages" id="chat-messages-${info.id}"></div>
+                            </div>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -346,12 +457,95 @@
                 img.addEventListener('click', () => openPhotoModal(img.dataset.url));
             });
 
+            // Add click handlers for chat headers
+            document.querySelectorAll('.chat-header').forEach(header => {
+                header.addEventListener('click', () => toggleChatArea(header.dataset.id));
+            });
+
+            // Add click handlers for send buttons
+            document.querySelectorAll('.chat-send-btn').forEach(btn => {
+                btn.addEventListener('click', () => sendChatMessage(btn.dataset.id));
+            });
+
+            // Add enter key handlers for inputs
+            document.querySelectorAll('.chat-input').forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const id = input.id.replace('chat-input-', '');
+                        sendChatMessage(id);
+                    }
+                });
+            });
+
             // Mark unread items as read
             detailInfos.forEach(info => {
                 if (!info.read) {
                     markAsRead(info.id);
                 }
             });
+        }
+
+        // Toggle chat area
+        function toggleChatArea(id) {
+            const area = document.getElementById(`chat-area-${id}`);
+            area.classList.toggle('active');
+            if (area.classList.contains('active')) {
+                document.getElementById(`chat-input-${id}`).focus();
+            }
+        }
+
+        // Send chat message
+        async function sendChatMessage(id) {
+            const input = document.getElementById(`chat-input-${id}`);
+            const messagesDiv = document.getElementById(`chat-messages-${id}`);
+            const btn = document.querySelector(`.chat-send-btn[data-id="${id}"]`);
+            const question = input.value.trim();
+
+            if (!question) return;
+
+            // Find the detail info
+            const info = detailInfos.find(i => i.id === id);
+            if (!info) return;
+
+            // Disable input
+            input.disabled = true;
+            btn.disabled = true;
+
+            // Show user message
+            messagesDiv.innerHTML += `<div class="chat-message user">${escapeHtmlGlobal(question)}</div>`;
+            messagesDiv.innerHTML += `<div class="chat-message ai loading" id="loading-${id}">考え中...</div>`;
+            input.value = '';
+
+            try {
+                const result = await askAboutDetail({
+                    question: question,
+                    imageUrl: info.imageUrl,
+                    briefAnalysis: info.briefAnalysis,
+                    detailAnalysis: info.detailAnalysis
+                });
+
+                // Remove loading message
+                document.getElementById(`loading-${id}`).remove();
+
+                // Show AI response
+                messagesDiv.innerHTML += `<div class="chat-message ai">${escapeHtmlGlobal(result.data.answer)}</div>`;
+            } catch (error) {
+                console.error('Chat error:', error);
+                document.getElementById(`loading-${id}`).remove();
+                messagesDiv.innerHTML += `<div class="chat-message error">エラーが発生しました</div>`;
+            }
+
+            // Re-enable input
+            input.disabled = false;
+            btn.disabled = false;
+            input.focus();
+        }
+
+        // Global escape function
+        function escapeHtmlGlobal(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Open photo modal
