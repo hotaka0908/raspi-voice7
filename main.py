@@ -482,6 +482,9 @@ def init_videocall(loop=None) -> bool:
 
 def convert_webm_to_wav(audio_data: bytes) -> Optional[bytes]:
     """WebM音声をWAV形式に変換"""
+    webm_path = None
+    wav_path = None
+
     try:
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as webm_file:
             webm_file.write(audio_data)
@@ -500,12 +503,23 @@ def convert_webm_to_wav(audio_data: bytes) -> Optional[bytes]:
         with open(wav_path, "rb") as f:
             wav_data = f.read()
 
-        os.unlink(webm_path)
-        os.unlink(wav_path)
         return wav_data
 
     except Exception:
         return None
+
+    finally:
+        # 一時ファイルのクリーンアップ（成功・失敗問わず）
+        if webm_path and os.path.exists(webm_path):
+            try:
+                os.unlink(webm_path)
+            except Exception:
+                pass
+        if wav_path and os.path.exists(wav_path):
+            try:
+                os.unlink(wav_path)
+            except Exception:
+                pass
 
 
 def on_voice_message_received(message):
@@ -528,14 +542,28 @@ def on_voice_message_received(message):
         audio_handler.play_audio_buffer(notification)
 
     try:
-        audio_url = message.get("audio_url")
-        if not audio_url:
-            logger.warning(f"[受信] audio_urlがない: id={msg_id}")
-            return
-
         messenger = get_firebase_messenger()
         if not messenger:
             logger.error(f"[受信] messengerがNone: id={msg_id}")
+            return
+
+        # 写真メッセージの処理
+        msg_type = message.get("type")
+        photo_url = message.get("photo_url")
+        if msg_type == "photo" or (photo_url and not message.get("audio_url")):
+            logger.info(f"[受信] 写真メッセージ受信: id={msg_id}")
+            # 写真メッセージは受信確認のみ（音声デバイスでは表示不可）
+            # テキストがあれば読み上げも検討できる
+            text = message.get("text")
+            if text:
+                logger.info(f"[受信] 写真メッセージのテキスト: {text}")
+            messenger.mark_as_played(message.get("id"))
+            logger.info(f"[受信] 写真メッセージ処理完了: id={msg_id}")
+            return
+
+        audio_url = message.get("audio_url")
+        if not audio_url:
+            logger.warning(f"[受信] audio_urlがない: id={msg_id}")
             return
 
         logger.info(f"[受信] 音声ダウンロード開始: id={msg_id}")
@@ -565,11 +593,12 @@ def on_voice_message_received(message):
                             logger.info(f"受信メッセージをテキスト化: {transcribed_text[:50]}...")
                 except Exception as e:
                     logger.warning(f"テキスト化エラー: {e}")
-        else:
-            logger.error(f"[受信] WAV変換失敗: id={msg_id}")
 
-        messenger.mark_as_played(message.get("id"))
-        logger.info(f"[受信] メッセージ処理完了: id={msg_id}")
+            # 正常に処理できた場合のみ既読化
+            messenger.mark_as_played(message.get("id"))
+            logger.info(f"[受信] メッセージ処理完了: id={msg_id}")
+        else:
+            logger.error(f"[受信] WAV変換失敗: id={msg_id} - 次回ポーリングで再試行します")
 
     except Exception as e:
         logger.error(f"[受信] メッセージ受信エラー: id={msg_id}, error={e}")

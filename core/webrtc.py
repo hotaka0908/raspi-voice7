@@ -64,9 +64,10 @@ def parse_ice_candidate(candidate_str: str) -> Optional[Dict]:
         logger.debug(f"ICE候補パースエラー: {e}")
         return None
 
-# aiortcのデバッグログを有効化
-logging.getLogger("aioice").setLevel(logging.DEBUG)
-logging.getLogger("aiortc").setLevel(logging.DEBUG)
+# aiortcのログレベル設定（本番環境ではWARNING以上のみ出力）
+# デバッグ時はDEBUGに変更可能
+logging.getLogger("aioice").setLevel(logging.WARNING)
+logging.getLogger("aiortc").setLevel(logging.WARNING)
 
 # aiortcのインポート（インストールされていない場合のフォールバック）
 try:
@@ -179,26 +180,36 @@ class CameraVideoTrack(MediaStreamTrack):
 
         # YUV420データを読み込み（非同期で実行）
         frame_size = Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 3 // 2
-        try:
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, self._process.stdout.read, frame_size)
-            if len(data) != frame_size:
+        max_retries = 10  # スタックオーバーフロー防止
+
+        for _ in range(max_retries):
+            try:
+                loop = asyncio.get_event_loop()
+                data = await loop.run_in_executor(None, self._process.stdout.read, frame_size)
+                if len(data) != frame_size:
+                    await asyncio.sleep(0.01)
+                    continue  # 再帰の代わりにループで再試行
+
+                frame = VideoFrame(width=Config.VIDEO_WIDTH, height=Config.VIDEO_HEIGHT, format="yuv420p")
+                frame.planes[0].update(data[:Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT])
+                frame.planes[1].update(data[Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT:Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 5 // 4])
+                frame.planes[2].update(data[Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 5 // 4:])
+                frame.pts = self._frame_count
+                frame.time_base = Fraction(1, Config.VIDEO_FPS)
+                self._frame_count += 1
+                return frame
+
+            except Exception as e:
+                logger.debug(f"フレーム読み取りエラー: {e}")
                 await asyncio.sleep(0.01)
-                return await self.recv()
+                continue  # 再帰の代わりにループで再試行
 
-            frame = VideoFrame(width=Config.VIDEO_WIDTH, height=Config.VIDEO_HEIGHT, format="yuv420p")
-            frame.planes[0].update(data[:Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT])
-            frame.planes[1].update(data[Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT:Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 5 // 4])
-            frame.planes[2].update(data[Config.VIDEO_WIDTH * Config.VIDEO_HEIGHT * 5 // 4:])
-            frame.pts = self._frame_count
-            frame.time_base = Fraction(1, Config.VIDEO_FPS)
-            self._frame_count += 1
-            return frame
-
-        except Exception as e:
-            logger.debug(f"フレーム読み取りエラー: {e}")
-            await asyncio.sleep(0.01)
-            return await self.recv()
+        # リトライ上限に達した場合は黒フレームを返す
+        frame = VideoFrame(width=Config.VIDEO_WIDTH, height=Config.VIDEO_HEIGHT, format="yuv420p")
+        frame.pts = self._frame_count
+        frame.time_base = Fraction(1, Config.VIDEO_FPS)
+        self._frame_count += 1
+        return frame
 
 
 class AudioTrackFromDevice(MediaStreamTrack):
@@ -268,27 +279,38 @@ class AudioTrackFromDevice(MediaStreamTrack):
             self._pts += self._samples_per_frame
             return frame
 
-        try:
-            # 非同期で読み込み
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(
-                None,
-                lambda: self._stream.read(self._samples_per_frame, exception_on_overflow=False)
-            )
-            audio_data = np.frombuffer(data, dtype=np.int16)
+        max_retries = 10  # スタックオーバーフロー防止
 
-            frame = AudioFrame(format="s16", layout="mono", samples=len(audio_data))
-            frame.sample_rate = self._sample_rate
-            frame.planes[0].update(audio_data.tobytes())
-            frame.pts = self._pts
-            frame.time_base = Fraction(1, self._sample_rate)
-            self._pts += len(audio_data)
-            return frame
+        for _ in range(max_retries):
+            try:
+                # 非同期で読み込み
+                loop = asyncio.get_event_loop()
+                data = await loop.run_in_executor(
+                    None,
+                    lambda: self._stream.read(self._samples_per_frame, exception_on_overflow=False)
+                )
+                audio_data = np.frombuffer(data, dtype=np.int16)
 
-        except Exception as e:
-            logger.debug(f"オーディオ読み取りエラー: {e}")
-            await asyncio.sleep(0.02)
-            return await self.recv()
+                frame = AudioFrame(format="s16", layout="mono", samples=len(audio_data))
+                frame.sample_rate = self._sample_rate
+                frame.planes[0].update(audio_data.tobytes())
+                frame.pts = self._pts
+                frame.time_base = Fraction(1, self._sample_rate)
+                self._pts += len(audio_data)
+                return frame
+
+            except Exception as e:
+                logger.debug(f"オーディオ読み取りエラー: {e}")
+                await asyncio.sleep(0.02)
+                continue  # 再帰の代わりにループで再試行
+
+        # リトライ上限に達した場合は無音フレームを返す
+        frame = AudioFrame(format="s16", layout="mono", samples=self._samples_per_frame)
+        frame.sample_rate = self._sample_rate
+        frame.pts = self._pts
+        frame.time_base = Fraction(1, self._sample_rate)
+        self._pts += self._samples_per_frame
+        return frame
 
 
 class VideoCallManager:

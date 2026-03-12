@@ -54,7 +54,7 @@ class FirebaseVoiceMessenger:
         upload_url = f"{storage_url}/{encoded_path}"
 
         headers = {"Content-Type": "audio/wav"}
-        response = requests.post(upload_url, headers=headers, data=audio_data)
+        response = requests.post(upload_url, headers=headers, data=audio_data, timeout=30)
 
         if response.status_code == 200:
             return f"{storage_url}/{encoded_path}?alt=media"
@@ -67,11 +67,11 @@ class FirebaseVoiceMessenger:
             filename = f"{self.device_id}_{timestamp}.jpg"
 
         storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
-        encoded_path = requests.utils.quote(f"audio/{filename}", safe='')
+        encoded_path = requests.utils.quote(f"photos/{filename}", safe='')
         upload_url = f"{storage_url}/{encoded_path}"
 
         headers = {"Content-Type": "image/jpeg"}
-        response = requests.post(upload_url, headers=headers, data=photo_data)
+        response = requests.post(upload_url, headers=headers, data=photo_data, timeout=30)
 
         if response.status_code == 200:
             return f"{storage_url}/{encoded_path}?alt=media"
@@ -98,7 +98,7 @@ class FirebaseVoiceMessenger:
             message_data["text"] = text
 
         db_url = f"{self.db_url}/messages.json"
-        response = requests.post(db_url, json=message_data)
+        response = requests.post(db_url, json=message_data, timeout=10)
         return response.status_code == 200
 
     def send_photo_message(self, photo_data: bytes, text: str = None) -> bool:
@@ -123,7 +123,7 @@ class FirebaseVoiceMessenger:
             message_data["text"] = text
 
         db_url = f"{self.db_url}/messages.json"
-        response = requests.post(db_url, json=message_data)
+        response = requests.post(db_url, json=message_data, timeout=10)
         return response.status_code == 200
 
     def upload_lifelog_photo(self, photo_data: bytes, date: str, time_str: str) -> bool:
@@ -134,7 +134,7 @@ class FirebaseVoiceMessenger:
         upload_url = f"{storage_url}/{encoded_path}"
 
         headers = {"Content-Type": "image/jpeg"}
-        response = requests.post(upload_url, headers=headers, data=photo_data)
+        response = requests.post(upload_url, headers=headers, data=photo_data, timeout=30)
 
         if response.status_code != 200:
             return False
@@ -153,7 +153,7 @@ class FirebaseVoiceMessenger:
         }
 
         db_url = f"{self.db_url}/lifelogs/{date}/{time_str}.json"
-        response = requests.put(db_url, json=doc_data)
+        response = requests.put(db_url, json=doc_data, timeout=10)
         return True
 
     def get_messages(self, limit: int = 10, unplayed_only: bool = False) -> List[Dict]:
@@ -187,7 +187,7 @@ class FirebaseVoiceMessenger:
 
     def download_audio(self, audio_url: str) -> Optional[bytes]:
         """音声データをダウンロード"""
-        response = requests.get(audio_url)
+        response = requests.get(audio_url, timeout=30)
         if response.status_code == 200:
             return response.content
         return None
@@ -195,16 +195,21 @@ class FirebaseVoiceMessenger:
     def mark_as_played(self, message_id: str) -> None:
         """メッセージを再生済みにマーク"""
         db_url = f"{self.db_url}/messages/{message_id}/played.json"
-        requests.put(db_url, json=True)
+        requests.put(db_url, json=True, timeout=10)
 
     def update_message_text(self, message_id: str, text: str) -> bool:
         """メッセージのテキストを更新"""
         db_url = f"{self.db_url}/messages/{message_id}/text.json"
-        response = requests.put(db_url, json=text)
+        response = requests.put(db_url, json=text, timeout=10)
         return response.status_code == 200
 
-    def start_listening(self, poll_interval: float = 3.0) -> None:
-        """新着メッセージの監視を開始"""
+    def start_listening(self, poll_interval: float = 3.0, max_processed_ids: int = 100) -> None:
+        """新着メッセージの監視を開始
+
+        Args:
+            poll_interval: ポーリング間隔（秒）
+            max_processed_ids: processed_idsの最大保持数
+        """
         self.running = True
         self.processed_ids = set()
 
@@ -221,6 +226,15 @@ class FirebaseVoiceMessenger:
                 try:
                     poll_count += 1
                     messages = self.get_messages(limit=15, unplayed_only=False)
+
+                    # 現在取得中のメッセージIDのセット
+                    current_ids = {m.get("id") for m in messages}
+
+                    # processed_idsを現在のメッセージに存在するもののみに絞る
+                    # （古いメッセージが削除されたらprocessed_idsからも削除）
+                    if len(self.processed_ids) > max_processed_ids:
+                        self.processed_ids = self.processed_ids & current_ids
+                        logger.debug(f"[POLLING] processed_ids縮小: {len(self.processed_ids)} 件")
 
                     # 10回に1回、または新着メッセージがある時にログ出力
                     new_messages = [m for m in messages if m.get("id") not in self.processed_ids]
@@ -242,9 +256,9 @@ class FirebaseVoiceMessenger:
                             except Exception as e:
                                 logger.error(f"[POLLING] コールバックエラー: {e}")
 
+                        # 処理試行済みとして記録（再起動時にリトライ可能）
+                        # mark_as_playedはコールバック内で成功時のみ呼び出される
                         self.processed_ids.add(msg_id)
-                        self.mark_as_played(msg_id)
-                        logger.info(f"[POLLING] メッセージを再生済みにマーク: id={msg_id}")
 
                 except Exception as e:
                     logger.error(f"[POLLING] ポーリングエラー: {e}")
@@ -286,7 +300,7 @@ class FirebaseVoiceMessenger:
 
         headers = {"Content-Type": "image/jpeg"}
         try:
-            response = requests.post(upload_url, headers=headers, data=image_data)
+            response = requests.post(upload_url, headers=headers, data=image_data, timeout=30)
             if response.status_code != 200:
                 logger.error(f"Failed to upload detail photo: {response.status_code} {response.text}")
                 return False
@@ -309,7 +323,7 @@ class FirebaseVoiceMessenger:
 
         db_url = f"{self.db_url}/detail_info.json"
         try:
-            response = requests.post(db_url, json=detail_data)
+            response = requests.post(db_url, json=detail_data, timeout=10)
             if response.status_code != 200:
                 logger.error(f"Failed to save detail info: {response.status_code} {response.text}")
                 return False

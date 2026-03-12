@@ -164,12 +164,12 @@ class AlarmSet(Capability):
             "required": ["time"]
         }
 
-    def execute(self, time_str: str, label: str = "アラーム",
+    def execute(self, time: str, label: str = "アラーム",
                 message: str = "") -> CapabilityResult:
         global _alarms, _alarm_next_id
 
         try:
-            hour, minute = map(int, time_str.split(':'))
+            hour, minute = map(int, time.split(':'))
             if not (0 <= hour <= 23 and 0 <= minute <= 59):
                 return CapabilityResult.fail("時刻が正しくありません")
         except Exception:
@@ -177,7 +177,7 @@ class AlarmSet(Capability):
 
         alarm = {
             "id": _alarm_next_id,
-            "time": time_str,
+            "time": time,
             "label": label,
             "message": message or f"{label}の時間です",
             "enabled": True,
@@ -188,7 +188,7 @@ class AlarmSet(Capability):
         _alarm_next_id += 1
         save_alarms()
 
-        return CapabilityResult.ok(f"{time_str}に覚えておきます")
+        return CapabilityResult.ok(f"{time}に覚えておきます")
 
 
 class AlarmList(Capability):
