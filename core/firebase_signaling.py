@@ -53,7 +53,7 @@ class FirebaseSignaling:
         }
 
         url = f"{self.db_url}/videocall/{session_id}.json"
-        response = requests.put(url, json=call_data)
+        response = requests.put(url, json=call_data, timeout=10)
 
         if response.status_code == 200:
             self.current_session_id = session_id
@@ -64,13 +64,13 @@ class FirebaseSignaling:
     def send_offer(self, session_id: str, offer: Dict) -> bool:
         """Offer SDPを送信"""
         url = f"{self.db_url}/videocall/{session_id}/offer.json"
-        response = requests.put(url, json=offer)
+        response = requests.put(url, json=offer, timeout=10)
         return response.status_code == 200
 
     def send_answer(self, session_id: str, answer: Dict) -> bool:
         """Answer SDPを送信"""
         url = f"{self.db_url}/videocall/{session_id}/answer.json"
-        response = requests.put(url, json=answer)
+        response = requests.put(url, json=answer, timeout=10)
 
         if response.status_code == 200:
             # ステータスを接続中に更新
@@ -82,13 +82,13 @@ class FirebaseSignaling:
         """ICE候補を送信"""
         path = "caller_candidates" if is_caller else "callee_candidates"
         url = f"{self.db_url}/videocall/{session_id}/{path}.json"
-        response = requests.post(url, json=candidate)
+        response = requests.post(url, json=candidate, timeout=10)
         return response.status_code == 200
 
     def get_session(self, session_id: str) -> Optional[Dict]:
         """セッション情報を取得"""
         url = f"{self.db_url}/videocall/{session_id}.json"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             return response.json()
         return None
@@ -117,18 +117,64 @@ class FirebaseSignaling:
     def _update_status(self, session_id: str, status: str) -> bool:
         """ステータス更新"""
         url = f"{self.db_url}/videocall/{session_id}/status.json"
-        response = requests.put(url, json=status)
+        response = requests.put(url, json=status, timeout=10)
         return response.status_code == 200
 
-    def cleanup_old_sessions(self) -> int:
-        """古いビデオ通話セッションをクリーンアップ"""
+    def cleanup_old_sessions(self, max_age_ms: int = 3600000) -> int:
+        """古いビデオ通話セッションをクリーンアップ
+
+        自分のデバイスに関連する古いセッション、または終了済みセッションのみ削除。
+        他のデバイス間のアクティブなセッションは保持。
+
+        Args:
+            max_age_ms: セッションの最大有効期間（ミリ秒）。デフォルト1時間。
+        """
         try:
             url = f"{self.db_url}/videocall.json"
-            response = requests.delete(url)
-            if response.status_code == 200:
-                logger.info("古いビデオ通話セッションを削除しました")
-                return 1
-            return 0
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                return 0
+
+            data = response.json()
+            if not data:
+                return 0
+
+            current_time = int(time.time() * 1000)
+            deleted_count = 0
+
+            for session_id, session in data.items():
+                if not isinstance(session, dict):
+                    continue
+
+                caller = session.get("caller", "")
+                callee = session.get("callee", "")
+                status = session.get("status", "")
+                created_at = session.get("created_at", 0)
+
+                # 削除条件:
+                # 1. 終了済みセッション
+                # 2. 自分のデバイスが関与 かつ 古いセッション（1時間以上前）
+                #    ただし created_at が未設定(0)の場合は削除しない
+                should_delete = False
+
+                if status in ("ended", "rejected"):
+                    should_delete = True
+                elif caller == self.device_id or callee == self.device_id:
+                    # created_at が設定されている場合のみ古いかどうか判定
+                    if created_at > 0 and current_time - created_at > max_age_ms:
+                        should_delete = True
+
+                if should_delete:
+                    delete_url = f"{self.db_url}/videocall/{session_id}.json"
+                    del_response = requests.delete(delete_url, timeout=10)
+                    if del_response.status_code == 200:
+                        deleted_count += 1
+                        logger.debug(f"セッション削除: {session_id}")
+
+            if deleted_count > 0:
+                logger.info(f"古いビデオ通話セッションを {deleted_count} 件削除しました")
+            return deleted_count
+
         except Exception as e:
             logger.warning(f"セッションクリーンアップエラー: {e}")
             return 0
@@ -176,7 +222,7 @@ class FirebaseSignaling:
     def _poll_signals(self) -> None:
         """シグナリングをポーリング"""
         url = f"{self.db_url}/videocall.json"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
 
         if response.status_code != 200:
             return

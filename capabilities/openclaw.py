@@ -133,6 +133,25 @@ async def get_openclaw_client() -> Optional[OpenClawClient]:
 def close_openclaw_client():
     """クライアントを閉じる（同期版、終了時用）"""
     global _openclaw_client
+
+    if _openclaw_client is not None:
+        # WebSocket接続を適切に閉じる
+        try:
+            # 既存のイベントループが走っているか確認
+            try:
+                running_loop = asyncio.get_running_loop()
+                # 既存ループがある場合はそのループで実行
+                future = asyncio.run_coroutine_threadsafe(
+                    _openclaw_client.disconnect(),
+                    running_loop
+                )
+                future.result(timeout=5)
+            except RuntimeError:
+                # イベントループが走っていない場合は新規作成
+                asyncio.run(_openclaw_client.disconnect())
+        except Exception:
+            pass  # 終了時のエラーは無視
+
     _openclaw_client = None
 
 

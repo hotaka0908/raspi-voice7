@@ -280,14 +280,11 @@ class OpenAIRealtimeClient:
 
             logger.info(f"[CAPABILITY] {name} {arguments}")
 
-            # 長時間かかる処理は別スレッドで
-            if name in ["voice_send_photo", "camera_capture", "gmail_send_photo"]:
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(
-                    None, lambda: self.executor.execute(name, arguments)
-                )
-            else:
-                result = self.executor.execute(name, arguments)
+            # 全てのツール実行を別スレッドで（イベントループをブロックしない）
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, lambda: self.executor.execute(name, arguments)
+            )
 
             # voice_sendの場合は録音モードを有効化
             if result.data and result.data.get("start_voice_recording"):
