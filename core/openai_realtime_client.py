@@ -52,7 +52,6 @@ class OpenAIRealtimeClient:
     def _get_session_config(self) -> Dict[str, Any]:
         """セッション設定を取得"""
         return {
-            "type": "realtime",
             "modalities": ["text", "audio"],
             "instructions": get_system_prompt(),
             "voice": Config.VOICE,

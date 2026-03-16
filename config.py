@@ -17,7 +17,7 @@ class Config:
     """アプリケーション設定"""
 
     # OpenAI Realtime API設定
-    MODEL = "gpt-realtime-1.5"
+    MODEL = "gpt-4o-realtime-preview"
     VOICE = "alloy"  # OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
 
     # オーディオ設定 (OpenAI Realtime API仕様)
