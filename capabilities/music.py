@@ -16,8 +16,27 @@ from pathlib import Path
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 
-# レコードノイズファイルのパス
-_VINYL_NOISE_PATH = Path(__file__).parent.parent / "assets" / "vinyl_noise.wav"
+# 読み込み音ファイルのパス
+_LOADING_SOUND_PATH = Path(__file__).parent.parent / "assets" / "loading_sound.wav"
+
+
+def _ensure_loading_sound_exists() -> bool:
+    """読み込み音WAVファイルが存在することを確認（なければ生成）"""
+    if _LOADING_SOUND_PATH.exists():
+        return True
+
+    try:
+        from core.audio import generate_loading_sound
+        sound_data = generate_loading_sound()
+        if sound_data:
+            # assetsディレクトリを作成
+            _LOADING_SOUND_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(_LOADING_SOUND_PATH, 'wb') as f:
+                f.write(sound_data)
+            return True
+    except Exception:
+        pass
+    return False
 
 
 # 音楽プレイヤー状態管理
@@ -97,8 +116,8 @@ def _play_youtube(query: str) -> bool:
             pass
 
     try:
-        # mpvでレコードノイズ→YouTube音楽を連続再生
-        # レコードノイズが即座に再生され、その間にYouTubeを読み込む
+        # mpvで読み込み音→YouTube音楽を連続再生
+        # 読み込み音が即座に再生され、その間にYouTubeを読み込む
         cmd = [
             "mpv",
             "--no-video",
@@ -107,9 +126,9 @@ def _play_youtube(query: str) -> bool:
             "--really-quiet",
         ]
 
-        # レコードノイズファイルが存在すれば先に再生
-        if _VINYL_NOISE_PATH.exists():
-            cmd.append(str(_VINYL_NOISE_PATH))
+        # 読み込み音ファイルを確保して先に再生
+        if _ensure_loading_sound_exists() and _LOADING_SOUND_PATH.exists():
+            cmd.append(str(_LOADING_SOUND_PATH))
 
         cmd.append(f"ytdl://ytsearch1:{query}")
 
