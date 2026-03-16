@@ -6,6 +6,7 @@
 - 継続的な記録と振り返り
 """
 
+import base64
 import os
 import subprocess
 import threading
@@ -17,7 +18,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Callable
 
 from .base import Capability, CapabilityCategory, CapabilityResult
-from .vision import camera_lock
+from .vision import camera_lock, get_openai_client
 from config import Config
 
 
@@ -45,6 +46,39 @@ def set_play_audio_callback(callback: Callable) -> None:
     """音声再生コールバックを設定"""
     global _play_audio_callback
     _play_audio_callback = callback
+
+
+def _analyze_lifelog_photo(photo_data: bytes) -> str:
+    """ライフログ写真を分析して説明を生成"""
+    try:
+        client = get_openai_client()
+        image_base64 = base64.b64encode(photo_data).decode('utf-8')
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "この写真に写っている状況を簡潔に説明してください。ライフログとして記録するため、「何をしているか」「どこにいるか」を中心に、1文で日本語で説明してください。"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}",
+                                "detail": "low"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=100
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        return ""
 
 
 def stop_lifelog_thread() -> None:
@@ -104,6 +138,10 @@ def _capture_lifelog_photo() -> bool:
     if not camera_lock.acquire(blocking=False):
         return False
 
+    photo_data = None
+    today = None
+    timestamp = None
+
     try:
         # 今日のディレクトリを作成
         today = datetime.now().strftime("%Y-%m-%d")
@@ -131,16 +169,9 @@ def _capture_lifelog_photo() -> bool:
                 if shutter:
                     _play_audio_callback(shutter)
 
-            # Firebaseにアップロード
-            if _firebase_messenger:
-                try:
-                    with open(image_path, "rb") as f:
-                        photo_data = f.read()
-                    _firebase_messenger.upload_lifelog_photo(photo_data, today, timestamp)
-                except Exception:
-                    pass
-
-            return True
+            # 写真データを読み込み
+            with open(image_path, "rb") as f:
+                photo_data = f.read()
         else:
             return False
 
@@ -148,6 +179,18 @@ def _capture_lifelog_photo() -> bool:
         return False
     finally:
         camera_lock.release()
+
+    # カメラロック外でFirebaseアップロードと分析を実行
+    if photo_data and _firebase_messenger:
+        try:
+            # 写真を分析
+            analysis = _analyze_lifelog_photo(photo_data)
+            # Firebaseにアップロード（分析結果付き）
+            _firebase_messenger.upload_lifelog_photo(photo_data, today, timestamp, analysis)
+        except Exception:
+            pass
+
+    return True
 
 
 def _lifelog_thread_func() -> None:

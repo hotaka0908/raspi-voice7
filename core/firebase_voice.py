@@ -126,8 +126,16 @@ class FirebaseVoiceMessenger:
         response = requests.post(db_url, json=message_data, timeout=10)
         return response.status_code == 200
 
-    def upload_lifelog_photo(self, photo_data: bytes, date: str, time_str: str) -> bool:
-        """ライフログ写真をFirebaseにアップロード"""
+    def upload_lifelog_photo(self, photo_data: bytes, date: str, time_str: str,
+                             analysis: str = "") -> bool:
+        """ライフログ写真をFirebaseにアップロード
+
+        Args:
+            photo_data: 写真のバイナリデータ
+            date: 日付 (YYYY-MM-DD)
+            time_str: 時刻 (HHMMSS)
+            analysis: 写真の分析結果
+        """
         filename = f"{time_str}.jpg"
         storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
         encoded_path = requests.utils.quote(f"lifelogs/{date}/{filename}", safe='')
@@ -148,8 +156,8 @@ class FirebaseVoiceMessenger:
             "timestamp": timestamp,
             "time": time_formatted,
             "photoUrl": photo_url,
-            "analyzed": False,
-            "analysis": ""
+            "analyzed": bool(analysis),
+            "analysis": analysis
         }
 
         db_url = f"{self.db_url}/lifelogs/{date}/{time_str}.json"
