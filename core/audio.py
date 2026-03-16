@@ -352,30 +352,32 @@ def generate_music_start_sound() -> Optional[bytes]:
 
 
 def generate_loading_sound() -> Optional[bytes]:
-    """読み込み音を生成（柔らかい水滴サウンド・上昇）"""
+    """読み込み音を生成（柔らかい水滴サウンド・上昇、約2秒）"""
     try:
         sample_rate = 48000
-        duration = 0.5
+        duration = 2.0
 
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
 
-        # 柔らかい水滴音：低めから上昇
-        freq = 400 + 300 * t  # 400Hz → 550Hz へ上昇
-        drop1 = np.sin(2 * np.pi * freq * t) * np.exp(-t * 5)
+        # 複数の水滴を時間差で配置
+        sound = np.zeros(samples)
 
-        # 2つ目の水滴（少し高めから上昇）
-        t2 = np.maximum(t - 0.12, 0)
-        freq2 = 500 + 350 * t2
-        drop2 = np.sin(2 * np.pi * freq2 * t2) * np.exp(-t2 * 4) * 0.5
+        # 水滴のタイミングと周波数（上昇感）
+        drops = [
+            (0.0, 400, 1.0),
+            (0.3, 450, 0.8),
+            (0.6, 500, 0.7),
+            (0.9, 550, 0.6),
+            (1.2, 600, 0.5),
+            (1.5, 650, 0.45),
+        ]
 
-        # 3つ目の水滴（さらに高めから上昇）
-        t3 = np.maximum(t - 0.25, 0)
-        freq3 = 600 + 400 * t3
-        drop3 = np.sin(2 * np.pi * freq3 * t3) * np.exp(-t3 * 5) * 0.35
-
-        # 合成
-        sound = drop1 + drop2 + drop3
+        for start_time, base_freq, amplitude in drops:
+            t_drop = np.maximum(t - start_time, 0)
+            freq = base_freq + 150 * t_drop
+            drop = np.sin(2 * np.pi * freq * t_drop) * np.exp(-t_drop * 4) * amplitude
+            sound += drop
 
         # 音量調整（控えめ）
         sound = (sound * 0.25 * 32767).astype(np.int16)

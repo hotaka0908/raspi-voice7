@@ -132,12 +132,17 @@ promptで質問を渡すと、見たものについてその質問に答える""
         """カメラで撮影して分析"""
         global _play_audio_callback
 
-        # 読み込み音を先に再生（即座にフィードバック）
+        # 読み込み音を非同期で再生（撮影・分析と並行）
         if _play_audio_callback:
             from core.audio import generate_loading_sound
             loading = generate_loading_sound()
             if loading:
-                _play_audio_callback(loading)
+                import threading
+                threading.Thread(
+                    target=_play_audio_callback,
+                    args=(loading,),
+                    daemon=True
+                ).start()
 
         with camera_lock:
             try:
