@@ -1251,50 +1251,15 @@
         });
 
         // Share to X
-        shareXBtn.addEventListener('click', async () => {
+        shareXBtn.addEventListener('click', () => {
             const photo = currentPhotos[currentPhotoIndex];
             if (!photo) return;
 
             const text = photo.analysis || 'ライフログ';
 
-            // 画像をダウンロード
-            try {
-                const response = await fetch(photo.photoUrl);
-                const blob = await response.blob();
-                const fileName = `lifelog-${selectedDate}-${photo.time || 'photo'}.jpg`;
-
-                // iOSの場合はWeb Share APIを試す
-                if (navigator.share && navigator.canShare) {
-                    const file = new File([blob], fileName, { type: blob.type });
-                    if (navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            files: [file],
-                            text: text
-                        });
-                        return;
-                    }
-                }
-
-                // フォールバック: 画像をダウンロードしてからXを開く
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                // Xを開く（テキストのみ）
-                const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + '\n\n(画像は保存済み)')}`;
-                window.open(tweetUrl, '_blank', 'width=550,height=420');
-
-            } catch (error) {
-                console.error('共有エラー:', error);
-                // エラー時は従来のURL共有にフォールバック
-                const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(photo.photoUrl)}`;
-                window.open(tweetUrl, '_blank', 'width=550,height=420');
-            }
+            // シンプルにXの投稿画面を開く（テキストのみ）
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            window.open(tweetUrl, '_blank');
         });
 
         // Helper Functions
