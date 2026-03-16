@@ -371,10 +371,48 @@
             text-align: center;
         }
 
+        .photo-modal .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
         .photo-modal .modal-footer .analysis {
             font-size: 0.95rem;
             line-height: 1.5;
             opacity: 0.9;
+            flex: 1;
+        }
+
+        .photo-modal .modal-footer .share-x-btn {
+            background: #000;
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .photo-modal .modal-footer .share-x-btn:hover {
+            background: #333;
+        }
+
+        .photo-modal .modal-footer .share-x-btn:active {
+            transform: scale(0.95);
+        }
+
+        .photo-modal .modal-footer .share-x-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
         }
 
         .photo-modal .nav-btn {
@@ -650,6 +688,11 @@
         </div>
         <div class="modal-footer">
             <p class="analysis" id="modalAnalysis"></p>
+            <button class="share-x-btn" id="shareXBtn" title="Xに共有">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -694,6 +737,7 @@
         const closeModal = document.getElementById('closeModal');
         const prevPhoto = document.getElementById('prevPhoto');
         const nextPhoto = document.getElementById('nextPhoto');
+        const shareXBtn = document.getElementById('shareXBtn');
 
         // Display Mode Toggle (Grid / Diary)
         gridModeBtn.addEventListener('click', () => {
@@ -1099,6 +1143,20 @@
             } else if (e.key === 'ArrowRight') {
                 nextPhoto.click();
             }
+        });
+
+        // Share to X
+        shareXBtn.addEventListener('click', () => {
+            const photo = currentPhotos[currentPhotoIndex];
+            if (!photo) return;
+
+            const text = photo.analysis || 'ライフログ';
+            const url = photo.photoUrl;
+
+            // X Web Intent URL
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+
+            window.open(tweetUrl, '_blank', 'width=550,height=420');
         });
 
         // Helper Functions
