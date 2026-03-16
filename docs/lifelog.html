@@ -1251,13 +1251,34 @@
         });
 
         // Share to X
-        shareXBtn.addEventListener('click', () => {
+        shareXBtn.addEventListener('click', async () => {
             const photo = currentPhotos[currentPhotoIndex];
             if (!photo) return;
 
             const text = photo.analysis || 'ライフログ';
 
-            // シンプルにXの投稿画面を開く（テキストのみ）
+            // Web Share API（iOS Safari）で画像共有を試みる
+            if (navigator.share) {
+                try {
+                    // 画像を取得
+                    const response = await fetch(photo.photoUrl);
+                    if (!response.ok) throw new Error('画像取得失敗');
+
+                    const blob = await response.blob();
+                    const file = new File([blob], 'lifelog.jpg', { type: 'image/jpeg' });
+
+                    // 共有（Xアプリを選択可能）
+                    await navigator.share({
+                        text: text,
+                        files: [file]
+                    });
+                    return;
+                } catch (e) {
+                    console.log('Web Share失敗:', e);
+                }
+            }
+
+            // フォールバック：テキストのみでXを開く
             const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
             window.open(tweetUrl, '_blank');
         });
