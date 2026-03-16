@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, Callable
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from .vision import camera_lock, get_openai_client
+from .proactive_reminder import FirebaseLocationClient
 from config import Config
 
 
@@ -34,6 +35,9 @@ _firebase_messenger = None
 
 # オーディオ再生コールバック
 _play_audio_callback: Optional[Callable] = None
+
+# 位置情報クライアント
+_location_client: Optional[FirebaseLocationClient] = None
 
 
 def set_firebase_messenger(messenger) -> None:
@@ -130,6 +134,24 @@ def _generate_shutter_sound() -> Optional[bytes]:
         return None
 
 
+def _get_current_location() -> Optional[Dict[str, Any]]:
+    """現在の位置情報を取得"""
+    global _location_client
+
+    if _location_client is None:
+        _location_client = FirebaseLocationClient()
+
+    location = _location_client.get_current_location()
+    if location:
+        return {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "accuracy": location.accuracy,
+            "source": "smartphone"
+        }
+    return None
+
+
 def _capture_lifelog_photo() -> bool:
     """ライフログ用の写真を撮影"""
     global _lifelog_photo_count, _firebase_messenger, _play_audio_callback
@@ -185,8 +207,12 @@ def _capture_lifelog_photo() -> bool:
         try:
             # 写真を分析
             analysis = _analyze_lifelog_photo(photo_data)
-            # Firebaseにアップロード（分析結果付き）
-            _firebase_messenger.upload_lifelog_photo(photo_data, today, timestamp, analysis)
+            # 位置情報を取得
+            location = _get_current_location()
+            # Firebaseにアップロード（分析結果と位置情報付き）
+            _firebase_messenger.upload_lifelog_photo(
+                photo_data, today, timestamp, analysis, location
+            )
         except Exception:
             pass
 

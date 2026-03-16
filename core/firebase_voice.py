@@ -127,7 +127,8 @@ class FirebaseVoiceMessenger:
         return response.status_code == 200
 
     def upload_lifelog_photo(self, photo_data: bytes, date: str, time_str: str,
-                             analysis: str = "") -> bool:
+                             analysis: str = "",
+                             location: Optional[Dict[str, Any]] = None) -> bool:
         """ライフログ写真をFirebaseにアップロード
 
         Args:
@@ -135,6 +136,7 @@ class FirebaseVoiceMessenger:
             date: 日付 (YYYY-MM-DD)
             time_str: 時刻 (HHMMSS)
             analysis: 写真の分析結果
+            location: 位置情報 (latitude, longitude, accuracy, source)
         """
         filename = f"{time_str}.jpg"
         storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
@@ -159,6 +161,10 @@ class FirebaseVoiceMessenger:
             "analyzed": bool(analysis),
             "analysis": analysis
         }
+
+        # 位置情報があれば追加
+        if location:
+            doc_data["location"] = location
 
         db_url = f"{self.db_url}/lifelogs/{date}/{time_str}.json"
         response = requests.put(db_url, json=doc_data, timeout=10)
