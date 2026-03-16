@@ -130,6 +130,15 @@ promptで質問を渡すと、見たものについてその質問に答える""
 
     def execute(self, prompt: str = "何が見えますか？") -> CapabilityResult:
         """カメラで撮影して分析"""
+        global _play_audio_callback
+
+        # 読み込み音を先に再生（即座にフィードバック）
+        if _play_audio_callback:
+            from core.audio import generate_loading_sound
+            loading = generate_loading_sound()
+            if loading:
+                _play_audio_callback(loading)
+
         with camera_lock:
             try:
                 image_path = "/tmp/ai_necklace_capture.jpg"
