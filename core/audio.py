@@ -352,32 +352,33 @@ def generate_music_start_sound() -> Optional[bytes]:
 
 
 def generate_loading_sound() -> Optional[bytes]:
-    """読み込み音を生成（落ち着いた0.5秒のサウンド）"""
+    """読み込み音を生成（水滴が弾けるようなサウンド）"""
     try:
         sample_rate = 48000
-        duration = 0.5
+        duration = 0.4
 
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
 
-        # 低めの周波数でゆっくり上昇（落ち着いた印象）
-        base_freq = 280 + 80 * t  # 280Hz → 320Hz
-        tone = np.sin(2 * np.pi * base_freq * t)
+        # 水滴音：高い周波数から下降 + 減衰
+        freq = 1200 * np.exp(-t * 3)  # 1200Hz から急速に下降
+        drop1 = np.sin(2 * np.pi * freq * t) * np.exp(-t * 8)
 
-        # 柔らかい高調波（オルガン風）
-        harmonic1 = 0.4 * np.sin(2 * np.pi * base_freq * 2 * t)
-        harmonic2 = 0.2 * np.sin(2 * np.pi * base_freq * 3 * t)
+        # 2つ目の水滴（少し遅れて、少し低め）
+        t2 = np.maximum(t - 0.1, 0)
+        freq2 = 900 * np.exp(-t2 * 3)
+        drop2 = np.sin(2 * np.pi * freq2 * t2) * np.exp(-t2 * 7) * 0.6
 
-        # 合成（パルスなし、滑らか）
-        sound = tone + harmonic1 + harmonic2
+        # 3つ目の水滴（さらに遅れて）
+        t3 = np.maximum(t - 0.2, 0)
+        freq3 = 1400 * np.exp(-t3 * 4)
+        drop3 = np.sin(2 * np.pi * freq3 * t3) * np.exp(-t3 * 9) * 0.4
 
-        # ゆったりしたフェードイン・フェードアウト
-        fade_in = np.minimum(t / 0.1, 1)
-        fade_out = np.minimum((duration - t) / 0.15, 1)
-        sound = sound * fade_in * fade_out
+        # 合成
+        sound = drop1 + drop2 + drop3
 
-        # 音量調整（控えめ）
-        sound = (sound * 0.2 * 32767).astype(np.int16)
+        # 音量調整
+        sound = (sound * 0.35 * 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
