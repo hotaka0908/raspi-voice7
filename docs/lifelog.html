@@ -1128,6 +1128,59 @@
             photoModal.classList.add('active');
         }
 
+        // 逆ジオコーディングのキャッシュ
+        const locationCache = {};
+
+        // 緯度・経度から場所名を取得
+        async function getLocationName(lat, lng) {
+            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+            if (locationCache[cacheKey]) {
+                return locationCache[cacheKey];
+            }
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                    { headers: { 'Accept-Language': 'ja' } }
+                );
+                const data = await response.json();
+
+                // 場所名を構築（より具体的な名前を優先）
+                let locationName = '';
+                if (data.address) {
+                    const addr = data.address;
+                    // 施設名、建物名、または地区名を優先
+                    if (addr.amenity) locationName = addr.amenity;
+                    else if (addr.building) locationName = addr.building;
+                    else if (addr.leisure) locationName = addr.leisure;
+                    else if (addr.shop) locationName = addr.shop;
+                    else if (addr.neighbourhood) locationName = addr.neighbourhood;
+                    else if (addr.suburb) locationName = addr.suburb;
+                    else if (addr.city_district) locationName = addr.city_district;
+
+                    // 市区町村を追加
+                    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+                    if (city && locationName) {
+                        locationName = `${city} ${locationName}`;
+                    } else if (city) {
+                        locationName = city;
+                    }
+                }
+
+                if (!locationName && data.display_name) {
+                    // フォールバック: display_nameの最初の2要素を使用
+                    const parts = data.display_name.split(',').slice(0, 2);
+                    locationName = parts.join(',').trim();
+                }
+
+                locationCache[cacheKey] = locationName || '不明な場所';
+                return locationCache[cacheKey];
+            } catch (error) {
+                console.error('逆ジオコーディングエラー:', error);
+                return null;
+            }
+        }
+
         function updateModalContent() {
             const photo = currentPhotos[currentPhotoIndex];
             if (!photo) return;
@@ -1140,8 +1193,16 @@
             if (photo.location && photo.location.latitude && photo.location.longitude) {
                 const lat = photo.location.latitude;
                 const lng = photo.location.longitude;
-                const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                modalLocation.innerHTML = `📍 <a href="${mapsUrl}" target="_blank">地図で見る</a>`;
+                modalLocation.innerHTML = '📍 読み込み中...';
+
+                getLocationName(lat, lng).then(locationName => {
+                    if (locationName) {
+                        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                        modalLocation.innerHTML = `📍 <a href="${mapsUrl}" target="_blank">${locationName}</a>`;
+                    } else {
+                        modalLocation.innerHTML = '';
+                    }
+                });
             } else {
                 modalLocation.innerHTML = '';
             }
