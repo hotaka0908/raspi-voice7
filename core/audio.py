@@ -351,20 +351,35 @@ def generate_music_start_sound() -> Optional[bytes]:
         return None
 
 
-def generate_shutter_sound() -> Optional[bytes]:
-    """カメラシャッター音を生成"""
+def generate_loading_sound() -> Optional[bytes]:
+    """読み込み音を生成（約1秒の処理中サウンド）"""
     try:
         sample_rate = 48000
-        duration = 0.08
+        duration = 1.0
 
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
 
-        # ノイズ + クリック音
-        noise = np.random.uniform(-1, 1, samples)
-        click = np.sin(2 * np.pi * 2000 * t)
-        envelope = np.exp(-t * 50)
-        sound = ((noise * 0.3 + click * 0.7) * envelope * 0.4 * 32767).astype(np.int16)
+        # ベース周波数が徐々に上がるトーン（処理中感）
+        base_freq = 400 + 200 * t  # 400Hz → 600Hz
+        tone = np.sin(2 * np.pi * base_freq * t)
+
+        # パルス感を出すための振幅変調（1秒間に4回脈動）
+        pulse = 0.5 + 0.5 * np.sin(2 * np.pi * 4 * t)
+
+        # 高調波を追加（柔らかい音色）
+        harmonic = 0.3 * np.sin(2 * np.pi * base_freq * 2 * t)
+
+        # 合成
+        sound = (tone + harmonic) * pulse
+
+        # フェードイン・フェードアウト
+        fade_in = np.minimum(t / 0.1, 1)
+        fade_out = np.minimum((duration - t) / 0.15, 1)
+        sound = sound * fade_in * fade_out
+
+        # 音量調整
+        sound = (sound * 0.3 * 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
