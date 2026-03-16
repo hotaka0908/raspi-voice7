@@ -199,6 +199,12 @@ def capture_image_raw() -> Optional[bytes]:
     global _play_audio_callback
     with camera_lock:
         try:
+            # シャッター音を先に再生（即座にフィードバック）
+            if _play_audio_callback:
+                shutter = generate_shutter_sound()
+                if shutter:
+                    _play_audio_callback(shutter)
+
             image_path = "/tmp/ai_necklace_capture.jpg"
             result = subprocess.run(
                 ["rpicam-still", "-o", image_path, "-t", "500",
@@ -208,12 +214,6 @@ def capture_image_raw() -> Optional[bytes]:
 
             if result.returncode != 0:
                 return None
-
-            # シャッター音を再生
-            if _play_audio_callback:
-                shutter = generate_shutter_sound()
-                if shutter:
-                    _play_audio_callback(shutter)
 
             with open(image_path, "rb") as f:
                 return f.read()
