@@ -5,11 +5,21 @@
 """
 
 import threading
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from .vision import get_last_capture, clear_last_capture, get_openai_client
 from .communication import get_firebase_messenger
+
+
+# 音声再生コールバック
+_play_audio_callback: Optional[Callable] = None
+
+
+def set_detail_audio_callback(callback: Callable) -> None:
+    """音声再生コールバックを設定"""
+    global _play_audio_callback
+    _play_audio_callback = callback
 
 
 class SendDetailInfo(Capability):
@@ -44,6 +54,19 @@ class SendDetailInfo(Capability):
 
     def execute(self, **kwargs) -> CapabilityResult:
         """詳細情報をスマホに送信"""
+        global _play_audio_callback
+
+        # 読み込み音を非同期で再生（分析と並行）
+        if _play_audio_callback:
+            from core.audio import generate_loading_sound
+            loading = generate_loading_sound()
+            if loading:
+                threading.Thread(
+                    target=_play_audio_callback,
+                    args=(loading,),
+                    daemon=True
+                ).start()
+
         # 1. 直前の撮影コンテキストを取得
         context = get_last_capture()
         if context is None:
@@ -141,4 +164,9 @@ class SendDetailInfo(Capability):
 # エクスポート
 DETAIL_INFO_CAPABILITIES = [
     SendDetailInfo(),
+]
+
+__all__ = [
+    'DETAIL_INFO_CAPABILITIES',
+    'set_detail_audio_callback',
 ]

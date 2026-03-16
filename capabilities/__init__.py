@@ -33,7 +33,7 @@ from .videocall import (
     VIDEOCALL_CAPABILITIES,
     set_videocall_callbacks
 )
-from .detail_info import DETAIL_INFO_CAPABILITIES
+from .detail_info import DETAIL_INFO_CAPABILITIES, set_detail_audio_callback
 from .music import (
     MUSIC_CAPABILITIES, is_music_playing, get_current_track, stop_music_player,
     set_music_audio_callbacks, is_music_active, pause_music_for_conversation,
@@ -88,6 +88,7 @@ __all__ = [
     'init_calendar',
     'get_calendar_service',
     'set_videocall_callbacks',
+    'set_detail_audio_callback',
     'start_reminder_thread',
     'stop_reminder_thread',
     'set_reminder_notify_callback',
