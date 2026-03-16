@@ -115,12 +115,21 @@ class SendDetailInfo(Capability):
 
         # 4. Firebaseに非同期で送信（送信完了を待たずに返答）
         def send_async():
-            firebase.send_detail_info(
-                image_data=context.image_data,
-                brief_analysis=context.brief_analysis,
-                detail_analysis=detail_analysis,
-                original_prompt=context.prompt
-            )
+            import logging
+            logger = logging.getLogger(__name__)
+            try:
+                result = firebase.send_detail_info(
+                    image_data=context.image_data,
+                    brief_analysis=context.brief_analysis,
+                    detail_analysis=detail_analysis,
+                    original_prompt=context.prompt
+                )
+                if result:
+                    logger.info("詳細情報をFirebaseに送信しました")
+                else:
+                    logger.error("詳細情報の送信に失敗しました")
+            except Exception as e:
+                logger.error(f"詳細情報送信エラー: {e}")
 
         threading.Thread(target=send_async, daemon=True).start()
 
