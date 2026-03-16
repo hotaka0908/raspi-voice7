@@ -50,17 +50,23 @@ class OpenAIRealtimeClient:
         self._current_response_id = None
 
     def _get_session_config(self) -> Dict[str, Any]:
-        """セッション設定を取得"""
+        """セッション設定を取得（GA API形式）"""
         return {
             "type": "realtime",
             "output_modalities": ["text", "audio"],
             "instructions": get_system_prompt(),
-            "voice": Config.VOICE,
-            "input_audio_format": "pcm16",
-            "output_audio_format": "pcm16",
-            "input_audio_transcription": {
-                "model": "whisper-1",
-                "language": "ja"  # 日本語を明示的に指定
+            "audio": {
+                "input": {
+                    "format": "pcm16",
+                    "transcription": {
+                        "model": "whisper-1",
+                        "language": "ja"
+                    }
+                },
+                "output": {
+                    "voice": Config.VOICE,
+                    "format": "pcm16"
+                }
             },
             "turn_detection": None,  # 手動制御
             "tools": self.executor.get_openai_tools(),
