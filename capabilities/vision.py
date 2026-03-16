@@ -199,11 +199,16 @@ def capture_image_raw() -> Optional[bytes]:
     with camera_lock:
         try:
             # シャッター音を先に再生（即座にフィードバック）
+            print(f"[DEBUG] capture_image_raw: callback={_play_audio_callback is not None}")
             if _play_audio_callback:
                 from core.audio import generate_shutter_sound
                 shutter = generate_shutter_sound()
+                print(f"[DEBUG] shutter sound generated: {len(shutter) if shutter else 0} bytes")
                 if shutter:
                     _play_audio_callback(shutter)
+                    print("[DEBUG] shutter sound callback called")
+            else:
+                print("[DEBUG] No audio callback set!")
 
             image_path = "/tmp/ai_necklace_capture.jpg"
             result = subprocess.run(
