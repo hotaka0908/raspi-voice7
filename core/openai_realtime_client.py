@@ -53,7 +53,7 @@ class OpenAIRealtimeClient:
         """セッション設定を取得"""
         return {
             "type": "realtime",
-            "modalities": ["text", "audio"],
+            "output_modalities": ["text", "audio"],
             "instructions": get_system_prompt(),
             "voice": Config.VOICE,
             "input_audio_format": "pcm16",
