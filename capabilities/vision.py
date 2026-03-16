@@ -17,7 +17,6 @@ from openai import OpenAI
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
-from core.audio import generate_shutter_sound
 
 
 # カメラ排他制御用ロック
@@ -201,6 +200,7 @@ def capture_image_raw() -> Optional[bytes]:
         try:
             # シャッター音を先に再生（即座にフィードバック）
             if _play_audio_callback:
+                from core.audio import generate_shutter_sound
                 shutter = generate_shutter_sound()
                 if shutter:
                     _play_audio_callback(shutter)
