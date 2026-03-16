@@ -320,6 +320,8 @@
             background: rgba(0,0,0,0.95);
             display: none;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
             z-index: 300;
         }
 
@@ -327,59 +329,59 @@
             display: flex;
         }
 
-        .photo-modal .modal-header {
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-        }
-
-        .photo-modal .modal-header .close-btn {
+        .photo-modal .modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
             background: none;
             border: none;
             color: white;
             font-size: 2rem;
             cursor: pointer;
             padding: 5px;
+            z-index: 10;
         }
 
-        .photo-modal .modal-header .photo-info {
+        .photo-modal .modal-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 100%;
+            max-height: 100%;
+            padding: 20px;
+        }
+
+        .photo-modal .photo-info {
             font-size: 0.9rem;
+            color: white;
             opacity: 0.8;
+            margin-bottom: 10px;
         }
 
         .photo-modal .modal-body {
-            flex: 1;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            overflow: hidden;
         }
 
         .photo-modal .modal-body img {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: 90vw;
+            max-height: 60vh;
             object-fit: contain;
             border-radius: 8px;
         }
 
         .photo-modal .modal-footer {
-            padding: 15px 20px;
+            margin-top: 15px;
             color: white;
             text-align: center;
-        }
-
-        .photo-modal .modal-footer {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             gap: 15px;
         }
 
         .photo-modal .modal-footer .modal-footer-content {
-            flex: 1;
             text-align: center;
         }
 
@@ -413,7 +415,7 @@
         }
 
         .photo-modal .modal-footer .share-x-btn {
-            background: #000;
+            background: rgba(255,255,255,0.1);
             color: white;
             border: none;
             width: 44px;
@@ -429,7 +431,7 @@
         }
 
         .photo-modal .modal-footer .share-x-btn:hover {
-            background: #333;
+            background: rgba(255,255,255,0.2);
         }
 
         .photo-modal .modal-footer .share-x-btn:active {
@@ -443,7 +445,7 @@
         }
 
         .photo-modal .nav-btn {
-            position: absolute;
+            position: fixed;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(255,255,255,0.2);
@@ -454,6 +456,7 @@
             border-radius: 50%;
             font-size: 1.5rem;
             cursor: pointer;
+            z-index: 10;
         }
 
         .photo-modal .nav-btn:active {
@@ -704,25 +707,25 @@
 
     <!-- Photo Modal -->
     <div class="photo-modal" id="photoModal">
-        <div class="modal-header">
+        <button class="modal-close-btn" id="closeModal">&times;</button>
+        <div class="modal-content-wrapper">
             <span class="photo-info" id="modalPhotoInfo"></span>
-            <button class="close-btn" id="closeModal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <button class="nav-btn prev" id="prevPhoto">&lt;</button>
-            <img id="modalImg" src="" alt="Photo">
-            <button class="nav-btn next" id="nextPhoto">&gt;</button>
-        </div>
-        <div class="modal-footer">
-            <div class="modal-footer-content">
-                <p class="analysis" id="modalAnalysis"></p>
-                <p class="location-info" id="modalLocation"></p>
+            <div class="modal-body">
+                <button class="nav-btn prev" id="prevPhoto">&lt;</button>
+                <img id="modalImg" src="" alt="Photo">
+                <button class="nav-btn next" id="nextPhoto">&gt;</button>
             </div>
-            <button class="share-x-btn" id="shareXBtn" title="Xに共有">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-            </button>
+            <div class="modal-footer">
+                <div class="modal-footer-content">
+                    <p class="analysis" id="modalAnalysis"></p>
+                    <p class="location-info" id="modalLocation"></p>
+                </div>
+                <button class="share-x-btn" id="shareXBtn" title="Xに共有">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
