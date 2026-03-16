@@ -183,11 +183,11 @@ class FirebaseLocationClient:
             if not data:
                 return None
 
-            # タイムスタンプチェック（10分以内）
+            # タイムスタンプチェック（1時間以内）
             timestamp = data.get("timestamp", 0)
             now = int(time.time() * 1000)
-            if now - timestamp > 10 * 60 * 1000:  # 10分
-                logger.debug("位置情報が古いです（10分以上前）")
+            if now - timestamp > 60 * 60 * 1000:  # 1時間
+                logger.debug("位置情報が古いです（1時間以上前）")
                 return None
 
             return Location(
