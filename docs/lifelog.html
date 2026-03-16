@@ -1250,154 +1250,18 @@
             }
         });
 
-        // 合成画像を作成する関数
-        async function createCompositeImage(photo, dateStr, timeStr) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-
-                img.onload = () => {
-                    // キャンバスのサイズ設定
-                    const padding = 40;
-                    const headerHeight = 80;
-                    const footerHeight = 100;
-                    const maxPhotoWidth = 800;
-                    const maxPhotoHeight = 600;
-
-                    // 写真のアスペクト比を維持しながらサイズを計算
-                    let photoWidth = img.width;
-                    let photoHeight = img.height;
-
-                    if (photoWidth > maxPhotoWidth) {
-                        photoHeight = (maxPhotoWidth / photoWidth) * photoHeight;
-                        photoWidth = maxPhotoWidth;
-                    }
-                    if (photoHeight > maxPhotoHeight) {
-                        photoWidth = (maxPhotoHeight / photoHeight) * photoWidth;
-                        photoHeight = maxPhotoHeight;
-                    }
-
-                    const canvasWidth = Math.max(photoWidth + padding * 2, 400);
-                    const canvasHeight = headerHeight + photoHeight + footerHeight + padding;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = canvasWidth;
-                    canvas.height = canvasHeight;
-                    const ctx = canvas.getContext('2d');
-
-                    // 背景（黒）
-                    ctx.fillStyle = '#000000';
-                    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-                    // 日付時間（上部）
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
-                    ctx.textAlign = 'center';
-                    const dateTimeText = `${dateStr} ${timeStr || ''}`.trim();
-                    ctx.fillText(dateTimeText, canvasWidth / 2, headerHeight / 2 + 10);
-
-                    // 写真（中央）
-                    const photoX = (canvasWidth - photoWidth) / 2;
-                    const photoY = headerHeight;
-                    ctx.drawImage(img, photoX, photoY, photoWidth, photoHeight);
-
-                    // 説明文（下部）- 複数行に対応
-                    const analysis = photo.analysis || '';
-                    if (analysis) {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
-                        ctx.textAlign = 'center';
-
-                        // テキストを折り返す
-                        const maxWidth = canvasWidth - padding * 2;
-                        const words = analysis.split('');
-                        let line = '';
-                        const lines = [];
-
-                        for (let i = 0; i < words.length; i++) {
-                            const testLine = line + words[i];
-                            const metrics = ctx.measureText(testLine);
-                            if (metrics.width > maxWidth && line !== '') {
-                                lines.push(line);
-                                line = words[i];
-                            } else {
-                                line = testLine;
-                            }
-                        }
-                        lines.push(line);
-
-                        // 最大2行まで表示
-                        const displayLines = lines.slice(0, 2);
-                        const lineHeight = 28;
-                        const textStartY = headerHeight + photoHeight + (footerHeight - displayLines.length * lineHeight) / 2 + 20;
-
-                        displayLines.forEach((line, index) => {
-                            ctx.fillText(line, canvasWidth / 2, textStartY + index * lineHeight);
-                        });
-                    }
-
-                    // Blob に変換
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            resolve(blob);
-                        } else {
-                            reject(new Error('画像の生成に失敗しました'));
-                        }
-                    }, 'image/png');
-                };
-
-                img.onerror = () => {
-                    reject(new Error('画像の読み込みに失敗しました'));
-                };
-
-                img.src = photo.photoUrl;
-            });
-        }
-
         // Share to X
-        shareXBtn.addEventListener('click', async () => {
+        shareXBtn.addEventListener('click', () => {
             const photo = currentPhotos[currentPhotoIndex];
             if (!photo) return;
 
-            try {
-                // ボタンを一時的に無効化
-                shareXBtn.disabled = true;
-                shareXBtn.style.opacity = '0.5';
+            const text = photo.analysis || 'ライフログ';
+            const url = photo.photoUrl;
 
-                // 合成画像を作成
-                const blob = await createCompositeImage(photo, selectedDate, photo.time);
-                const file = new File([blob], `lifelog-${selectedDate}-${photo.time || 'photo'}.png`, { type: 'image/png' });
+            // X Web Intent URL
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
 
-                // Web Share API が使えるか確認
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'ライフログ',
-                        text: photo.analysis || ''
-                    });
-                } else {
-                    // Web Share API が使えない場合はダウンロード
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `lifelog-${selectedDate}-${photo.time || 'photo'}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    // ダウンロード後、Xを開くか確認
-                    alert('画像をダウンロードしました。この画像をXに投稿できます。');
-                }
-            } catch (error) {
-                console.error('共有エラー:', error);
-                if (error.name !== 'AbortError') {
-                    alert('共有に失敗しました: ' + error.message);
-                }
-            } finally {
-                shareXBtn.disabled = false;
-                shareXBtn.style.opacity = '1';
-            }
+            window.open(tweetUrl, '_blank', 'width=550,height=420');
         });
 
         // Helper Functions
