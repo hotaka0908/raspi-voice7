@@ -53,7 +53,7 @@ class OpenAIRealtimeClient:
         """セッション設定を取得（GA API形式）"""
         return {
             "type": "realtime",
-            "output_modalities": ["text", "audio"],
+            "output_modalities": ["audio"],
             "instructions": get_system_prompt(),
             "audio": {
                 "input": {
