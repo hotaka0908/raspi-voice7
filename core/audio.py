@@ -352,7 +352,7 @@ def generate_music_start_sound() -> Optional[bytes]:
 
 
 def generate_loading_sound() -> Optional[bytes]:
-    """読み込み音を生成（約0.5秒の処理中サウンド）"""
+    """読み込み音を生成（落ち着いた0.5秒のサウンド）"""
     try:
         sample_rate = 48000
         duration = 0.5
@@ -360,26 +360,24 @@ def generate_loading_sound() -> Optional[bytes]:
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
 
-        # ベース周波数が徐々に上がるトーン（処理中感）
-        base_freq = 400 + 400 * t  # 400Hz → 600Hz（短い分、変化を大きく）
+        # 低めの周波数でゆっくり上昇（落ち着いた印象）
+        base_freq = 280 + 80 * t  # 280Hz → 320Hz
         tone = np.sin(2 * np.pi * base_freq * t)
 
-        # パルス感を出すための振幅変調（0.5秒間に2回脈動）
-        pulse = 0.5 + 0.5 * np.sin(2 * np.pi * 4 * t)
+        # 柔らかい高調波（オルガン風）
+        harmonic1 = 0.4 * np.sin(2 * np.pi * base_freq * 2 * t)
+        harmonic2 = 0.2 * np.sin(2 * np.pi * base_freq * 3 * t)
 
-        # 高調波を追加（柔らかい音色）
-        harmonic = 0.3 * np.sin(2 * np.pi * base_freq * 2 * t)
+        # 合成（パルスなし、滑らか）
+        sound = tone + harmonic1 + harmonic2
 
-        # 合成
-        sound = (tone + harmonic) * pulse
-
-        # フェードイン・フェードアウト
-        fade_in = np.minimum(t / 0.05, 1)
-        fade_out = np.minimum((duration - t) / 0.1, 1)
+        # ゆったりしたフェードイン・フェードアウト
+        fade_in = np.minimum(t / 0.1, 1)
+        fade_out = np.minimum((duration - t) / 0.15, 1)
         sound = sound * fade_in * fade_out
 
-        # 音量調整
-        sound = (sound * 0.3 * 32767).astype(np.int16)
+        # 音量調整（控えめ）
+        sound = (sound * 0.2 * 32767).astype(np.int16)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
