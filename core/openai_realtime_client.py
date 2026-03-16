@@ -66,7 +66,7 @@ class OpenAIRealtimeClient:
                 },
                 "output": {
                     "voice": Config.VOICE,
-                    "format": {"type": "audio/pcm"}
+                    "format": {"type": "audio/pcm", "rate": 24000}
                 }
             },
             "tools": self.executor.get_openai_tools(),
