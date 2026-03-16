@@ -378,11 +378,38 @@
             gap: 15px;
         }
 
+        .photo-modal .modal-footer .modal-footer-content {
+            flex: 1;
+            text-align: center;
+        }
+
         .photo-modal .modal-footer .analysis {
             font-size: 0.95rem;
             line-height: 1.5;
             opacity: 0.9;
-            flex: 1;
+        }
+
+        .photo-modal .modal-footer .location-info {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .photo-modal .modal-footer .location-info:empty {
+            display: none;
+        }
+
+        .photo-modal .modal-footer .location-info a {
+            color: #4ade80;
+            text-decoration: none;
+        }
+
+        .photo-modal .modal-footer .location-info a:hover {
+            text-decoration: underline;
         }
 
         .photo-modal .modal-footer .share-x-btn {
@@ -687,7 +714,10 @@
             <button class="nav-btn next" id="nextPhoto">&gt;</button>
         </div>
         <div class="modal-footer">
-            <p class="analysis" id="modalAnalysis"></p>
+            <div class="modal-footer-content">
+                <p class="analysis" id="modalAnalysis"></p>
+                <p class="location-info" id="modalLocation"></p>
+            </div>
             <button class="share-x-btn" id="shareXBtn" title="Xに共有">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -738,6 +768,7 @@
         const prevPhoto = document.getElementById('prevPhoto');
         const nextPhoto = document.getElementById('nextPhoto');
         const shareXBtn = document.getElementById('shareXBtn');
+        const modalLocation = document.getElementById('modalLocation');
 
         // Display Mode Toggle (Grid / Diary)
         gridModeBtn.addEventListener('click', () => {
@@ -1101,6 +1132,16 @@
             modalImg.src = photo.photoUrl;
             modalPhotoInfo.textContent = `${selectedDate} ${photo.time || ''}`;
             modalAnalysis.textContent = photo.analysis || '';
+
+            // 位置情報を表示
+            if (photo.location && photo.location.latitude && photo.location.longitude) {
+                const lat = photo.location.latitude;
+                const lng = photo.location.longitude;
+                const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                modalLocation.innerHTML = `📍 <a href="${mapsUrl}" target="_blank">地図で見る</a>`;
+            } else {
+                modalLocation.innerHTML = '';
+            }
 
             // Update nav button visibility
             prevPhoto.style.display = currentPhotoIndex > 0 ? 'block' : 'none';
