@@ -62,7 +62,7 @@ def _analyze_lifelog_photo(photo_data: bytes) -> str:
                     "content": [
                         {
                             "type": "text",
-                            "text": "この写真に写っている状況を簡潔に説明してください。ライフログとして記録するため、「何をしているか」「どこにいるか」を中心に、1文で日本語で説明してください。"
+                            "text": "この写真を24文字以内で説明。例:「カフェでコーヒーを飲んでいる」「電車で移動中」"
                         },
                         {
                             "type": "image_url",
@@ -74,7 +74,7 @@ def _analyze_lifelog_photo(photo_data: bytes) -> str:
                     ]
                 }
             ],
-            max_tokens=100
+            max_tokens=50
         )
         return response.choices[0].message.content.strip()
     except Exception:
