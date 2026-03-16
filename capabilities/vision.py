@@ -17,7 +17,7 @@ from openai import OpenAI
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
-from core import generate_shutter_sound
+from core.audio import generate_shutter_sound
 
 
 # カメラ排他制御用ロック
