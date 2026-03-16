@@ -369,9 +369,9 @@ class GmailReply(Capability):
             actual_id = message_id
 
         try:
+            # 元メールの内容を取得（本文も含む）
             original = _gmail_service.users().messages().get(
-                userId='me', id=actual_id, format='metadata',
-                metadataHeaders=['From', 'Subject', 'Message-ID', 'References', 'Reply-To']
+                userId='me', id=actual_id, format='full'
             ).execute()
 
             headers = {h['name']: h['value']
@@ -387,6 +387,17 @@ class GmailReply(Capability):
 
             thread_id = original.get('threadId')
 
+            # 元メールの本文を抽出
+            original_body = ""
+            payload = original.get('payload', {})
+            if 'body' in payload and payload['body'].get('data'):
+                original_body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
+            elif 'parts' in payload:
+                for part in payload['parts']:
+                    if part.get('mimeType') == 'text/plain' and part.get('body', {}).get('data'):
+                        original_body = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
+                        break
+
             message = MIMEText(body)
             message['to'] = to
             message['subject'] = subject
@@ -399,8 +410,8 @@ class GmailReply(Capability):
             to_name = to.split('@')[0]
             result_msg = f"{to_name}さんに返信しました"
 
-            # 予定があればカレンダーに追加
-            calendar_msg = check_and_add_schedule(to, subject, body)
+            # 予定があればカレンダーに追加（元メールの内容も渡す）
+            calendar_msg = check_and_add_schedule(to, subject, body, original_body)
             if calendar_msg:
                 result_msg += f"。{calendar_msg}"
 

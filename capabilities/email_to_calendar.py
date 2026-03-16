@@ -319,14 +319,99 @@ def _calculate_and_set_alarm(schedule: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def check_and_add_schedule(to: str, subject: str, body: str) -> Optional[str]:
+def _extract_schedule_from_reply(to: str, subject: str, reply_body: str,
+                                  original_body: str) -> Optional[Dict[str, Any]]:
+    """返信メールから予定情報を抽出（元メール + 合意確認）"""
+    client = _get_openai_client()
+    if not client:
+        return None
+
+    today = datetime.now()
+
+    prompt = f"""以下はメールの返信です。「元メール」に予定の提案があり、「返信」でそれに合意している場合のみ予定を抽出してください。
+
+【登録すべき例】
+- 元メール「○日○時に会いませんか？」→ 返信「了解です」「その時間で大丈夫です」「承知しました」
+- 元メール「○日に打ち合わせしたいのですが」→ 返信「問題ありません」「OK」「いいですよ」
+
+【登録しない例】
+- 返信で別の日時を提案している（「その日は無理なので○日はどうですか？」）
+- 断っている（「すみません、その日は難しいです」）
+- まだ検討中（「確認して連絡します」）
+- 元メールに具体的な日時がない
+
+今日は{today.strftime('%Y年%m月%d日')}です。
+
+---
+宛先: {to}
+件名: {subject}
+
+【元メール（相手から）】
+{original_body[:1000]}
+
+【返信（自分から）】
+{reply_body[:500]}
+---
+
+元メールの予定に合意している場合のみ、以下のJSON形式で返してください:
+{{
+  "has_schedule": true,
+  "title": "予定のタイトル",
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "location": "場所（わかる場合）",
+  "duration_minutes": 60
+}}
+
+合意していない、または予定情報がない場合:
+{{
+  "has_schedule": false
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "あなたはメールから予定情報を抽出するアシスタントです。JSONのみを返してください。"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,
+            response_format={"type": "json_object"}
+        )
+
+        result_text = response.choices[0].message.content
+        result = json.loads(result_text)
+
+        if result.get("has_schedule"):
+            logger.info(f"返信から予定を検出: {result}")
+            return result
+        return None
+
+    except Exception as e:
+        logger.error(f"返信予定抽出エラー: {e}")
+        return None
+
+
+def check_and_add_schedule(to: str, subject: str, body: str,
+                           original_body: str = None) -> Optional[str]:
     """
     メール送信後に呼び出す。予定があればカレンダーに追加し、アラームもセット。
+
+    Args:
+        to: 宛先
+        subject: 件名
+        body: 送信するメール本文
+        original_body: 返信の場合、元メールの本文
 
     Returns:
         追加した場合は通知メッセージ、なければNone
     """
-    schedule = _extract_schedule(to, subject, body)
+    # 返信の場合は元メール + 合意確認
+    if original_body:
+        schedule = _extract_schedule_from_reply(to, subject, body, original_body)
+    else:
+        # 新規メールの場合は送信内容から抽出
+        schedule = _extract_schedule(to, subject, body)
 
     if not schedule:
         return None
