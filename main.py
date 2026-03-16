@@ -54,6 +54,7 @@ from capabilities import (
     stop_music_player,
     set_music_audio_callbacks,
     is_music_active,
+    set_vision_audio_callback,
 )
 
 # systemdで実行時にprint出力をリアルタイムで表示
@@ -847,6 +848,7 @@ async def main_async():
 
     # コールバック設定
     set_play_audio_callback(audio_handler.play_audio_buffer)
+    set_vision_audio_callback(audio_handler.play_audio_buffer)
     set_music_audio_callbacks(
         stop_callback=audio_handler.stop_output_stream,
         start_callback=audio_handler.start_output_stream,

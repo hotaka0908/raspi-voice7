@@ -11,7 +11,8 @@ from .audio import (
     generate_startup_sound,
     generate_notification_sound,
     generate_reset_sound,
-    generate_music_start_sound
+    generate_music_start_sound,
+    generate_shutter_sound
 )
 from .openai_realtime_client import OpenAIRealtimeClient
 from .firebase_voice import FirebaseVoiceMessenger
@@ -26,6 +27,7 @@ __all__ = [
     'generate_notification_sound',
     'generate_reset_sound',
     'generate_music_start_sound',
+    'generate_shutter_sound',
     'OpenAIRealtimeClient',
     'FirebaseVoiceMessenger',
     'FirebaseSignaling',

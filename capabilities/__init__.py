@@ -9,7 +9,8 @@ from .executor import CapabilityExecutor, get_executor
 
 from .vision import (
     VISION_CAPABILITIES, capture_image_raw,
-    get_last_capture, clear_last_capture
+    get_last_capture, clear_last_capture,
+    set_vision_audio_callback
 )
 from .communication import (
     COMMUNICATION_CAPABILITIES,
@@ -67,6 +68,7 @@ __all__ = [
     'capture_image_raw',
     'get_last_capture',
     'clear_last_capture',
+    'set_vision_audio_callback',
     'init_gmail',
     'init_firebase',
     'get_firebase_messenger',

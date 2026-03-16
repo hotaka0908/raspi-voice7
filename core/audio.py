@@ -349,3 +349,30 @@ def generate_music_start_sound() -> Optional[bytes]:
         return wav_buffer.getvalue()
     except Exception:
         return None
+
+
+def generate_shutter_sound() -> Optional[bytes]:
+    """カメラシャッター音を生成"""
+    try:
+        sample_rate = 48000
+        duration = 0.08
+
+        samples = int(sample_rate * duration)
+        t = np.linspace(0, duration, samples, False)
+
+        # ノイズ + クリック音
+        noise = np.random.uniform(-1, 1, samples)
+        click = np.sin(2 * np.pi * 2000 * t)
+        envelope = np.exp(-t * 50)
+        sound = ((noise * 0.3 + click * 0.7) * envelope * 0.4 * 32767).astype(np.int16)
+
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(sound.tobytes())
+
+        return wav_buffer.getvalue()
+    except Exception:
+        return None

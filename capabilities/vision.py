@@ -17,10 +17,20 @@ from openai import OpenAI
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
+from core import generate_shutter_sound
 
 
 # カメラ排他制御用ロック
 camera_lock = threading.Lock()
+
+# 音声再生コールバック
+_play_audio_callback = None
+
+
+def set_vision_audio_callback(callback):
+    """音声再生コールバックを設定"""
+    global _play_audio_callback
+    _play_audio_callback = callback
 
 # OpenAIクライアント（Vision API用）
 _openai_client = None
@@ -186,6 +196,7 @@ promptで質問を渡すと、見たものについてその質問に答える""
 
 def capture_image_raw() -> Optional[bytes]:
     """画像データを取得（他のCapabilityから使用）"""
+    global _play_audio_callback
     with camera_lock:
         try:
             image_path = "/tmp/ai_necklace_capture.jpg"
@@ -197,6 +208,12 @@ def capture_image_raw() -> Optional[bytes]:
 
             if result.returncode != 0:
                 return None
+
+            # シャッター音を再生
+            if _play_audio_callback:
+                shutter = generate_shutter_sound()
+                if shutter:
+                    _play_audio_callback(shutter)
 
             with open(image_path, "rb") as f:
                 return f.read()
@@ -218,4 +235,5 @@ __all__ = [
     'clear_last_capture',
     'LastCaptureContext',
     'get_openai_client',
+    'set_vision_audio_callback',
 ]
