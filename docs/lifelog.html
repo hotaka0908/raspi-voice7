@@ -1193,12 +1193,12 @@
             if (photo.location && photo.location.latitude && photo.location.longitude) {
                 const lat = photo.location.latitude;
                 const lng = photo.location.longitude;
-                modalLocation.innerHTML = '📍 読み込み中...';
+                modalLocation.innerHTML = '読み込み中...';
 
                 getLocationName(lat, lng).then(locationName => {
                     if (locationName) {
                         const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                        modalLocation.innerHTML = `📍 <a href="${mapsUrl}" target="_blank">${locationName}</a>`;
+                        modalLocation.innerHTML = `<a href="${mapsUrl}" target="_blank">${locationName}</a>`;
                     } else {
                         modalLocation.innerHTML = '';
                     }
