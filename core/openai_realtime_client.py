@@ -57,18 +57,18 @@ class OpenAIRealtimeClient:
             "instructions": get_system_prompt(),
             "audio": {
                 "input": {
-                    "format": "pcm16",
+                    "format": {"type": "audio/pcm", "rate": 24000},
                     "transcription": {
                         "model": "whisper-1",
                         "language": "ja"
-                    }
+                    },
+                    "turn_detection": None  # 手動制御
                 },
                 "output": {
                     "voice": Config.VOICE,
-                    "format": "pcm16"
+                    "format": {"type": "audio/pcm"}
                 }
             },
-            "turn_detection": None,  # 手動制御
             "tools": self.executor.get_openai_tools(),
         }
 
