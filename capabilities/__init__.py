@@ -44,6 +44,11 @@ from .proactive_reminder import (
     stop_reminder_thread,
     set_reminder_notify_callback
 )
+from .profile import (
+    PROFILE_CAPABILITIES,
+    generate_user_profile,
+    get_profile_from_firebase
+)
 
 __all__ = [
     'Capability',
@@ -92,4 +97,7 @@ __all__ = [
     'start_reminder_thread',
     'stop_reminder_thread',
     'set_reminder_notify_callback',
+    'PROFILE_CAPABILITIES',
+    'generate_user_profile',
+    'get_profile_from_firebase',
 ]

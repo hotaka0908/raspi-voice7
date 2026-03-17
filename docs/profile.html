@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>プロファイル - raspi-voice</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            flex: 1;
+            color: #333;
+        }
+
+        .header .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 1.5rem;
+            padding: 5px;
+        }
+
+        .header .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .container {
+            padding: 80px 15px 30px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* プロファイルカード */
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2.5rem;
+        }
+
+        .profile-summary {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .profile-traits {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .trait-tag {
+            background: linear-gradient(135deg, #667eea20, #764ba220);
+            color: #667eea;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* セクション */
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+
+        /* 生活パターン */
+        .lifestyle-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .lifestyle-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        .lifestyle-label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .lifestyle-value {
+            font-size: 0.95rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* 睡眠スケジュール */
+        .sleep-schedule {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 15px 0;
+        }
+
+        .sleep-time {
+            text-align: center;
+        }
+
+        .sleep-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .sleep-label {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .sleep-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .sleep-type {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* 価値観バー */
+        .values-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .value-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .value-label {
+            width: 80px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .value-bar {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .value-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .value-score {
+            width: 40px;
+            text-align: right;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* 好み */
+        .preferences-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .pref-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .pref-label {
+            font-size: 0.8rem;
+            color: #888;
+            width: 60px;
+        }
+
+        .pref-tag {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        .pref-tag.like {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .pref-tag.dislike {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* 判断基準 */
+        .criteria-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .criteria-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .criteria-label {
+            font-size: 0.8rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .criteria-value {
+            font-size: 0.95rem;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* AI心得 */
+        .ai-guidelines {
+            background: linear-gradient(135deg, #667eea10, #764ba210);
+            border: 2px solid #667eea30;
+            padding: 20px;
+            border-radius: 16px;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* 洞察 */
+        .insights-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .insight-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .insight-icon {
+            color: #667eea;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .insight-text {
+            font-size: 0.95rem;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* メタ情報 */
+        .meta-info {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.85rem;
+        }
+
+        /* 活動統計 */
+        .activity-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 12px 8px;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* ローディング */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 空状態 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-title {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .empty-desc {
+            opacity: 0.8;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .generate-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-link">&larr;</a>
+        <h1>AIが理解しているあなた</h1>
+        <button class="refresh-btn" id="refreshBtn">更新</button>
+    </div>
+
+    <div class="container" id="content">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>プロファイルを読み込み中...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, get, set } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import firebaseConfig from './firebase-config.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const content = document.getElementById('content');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // 値のラベル変換
+        const valueLabels = {
+            efficiency: '効率重視',
+            routine: 'ルーティン',
+            solitude: '一人時間',
+            socialActivity: '社交性',
+            spontaneity: '自発性'
+        };
+
+        function renderProfile(profile) {
+            const personality = profile.personality || {};
+            const lifestyle = profile.lifestyle || {};
+            const sleep = profile.sleepSchedule || {};
+            const values = profile.values || {};
+            const preferences = profile.preferences || {};
+            const criteria = profile.decisionCriteria || {};
+            const insights = profile.insights || [];
+            const guidelines = profile.aiGuidelines || '';
+            const activityByTime = profile.activityByTime || {};
+            const keywords = profile.activityKeywords || {};
+
+            content.innerHTML = `
+                <!-- プロファイルヘッダー -->
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">🧠</div>
+                        <div class="profile-summary">${personality.summary || '分析中...'}</div>
+                        <div class="profile-traits">
+                            ${(personality.traits || []).map(t => `<span class="trait-tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 睡眠スケジュール -->
+                <div class="section">
+                    <div class="section-title">睡眠パターン</div>
+                    <div class="sleep-schedule">
+                        <div class="sleep-time">
+                            <div class="sleep-icon">🌅</div>
+                            <div class="sleep-label">起床</div>
+                            <div class="sleep-value">${sleep.wakeTime || '--:--'}</div>
+                        </div>
+                        <div class="sleep-type">${sleep.type || '不明'}</div>
+                        <div class="sleep-time">
+                            <div class="sleep-icon">🌙</div>
+                            <div class="sleep-label">就寝</div>
+                            <div class="sleep-value">${sleep.sleepTime || '--:--'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生活パターン -->
+                <div class="section">
+                    <div class="section-title">生活パターン</div>
+                    <div class="lifestyle-grid">
+                        <div class="lifestyle-item">
+                            <div class="lifestyle-label">午前中</div>
+                            <div class="lifestyle-value">${lifestyle.morning || '不明'}</div>
+                        </div>
+                        <div class="lifestyle-item">
+                            <div class="lifestyle-label">午後</div>
+                            <div class="lifestyle-value">${lifestyle.afternoon || '不明'}</div>
+                        </div>
+                        <div class="lifestyle-item">
+                            <div class="lifestyle-label">夜</div>
+                            <div class="lifestyle-value">${lifestyle.evening || '不明'}</div>
+                        </div>
+                        <div class="lifestyle-item">
+                            <div class="lifestyle-label">週末</div>
+                            <div class="lifestyle-value">${lifestyle.weekend || '不明'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 活動統計 -->
+                ${Object.keys(keywords).length > 0 ? `
+                <div class="section">
+                    <div class="section-title">よくする活動</div>
+                    <div class="activity-stats">
+                        ${Object.entries(keywords)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 4)
+                            .map(([k, v]) => `
+                                <div class="stat-item">
+                                    <div class="stat-value">${v}</div>
+                                    <div class="stat-label">${k}</div>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 価値観 -->
+                ${Object.keys(values).length > 0 ? `
+                <div class="section">
+                    <div class="section-title">価値観</div>
+                    <div class="values-list">
+                        ${Object.entries(values).map(([key, value]) => `
+                            <div class="value-item">
+                                <span class="value-label">${valueLabels[key] || key}</span>
+                                <div class="value-bar">
+                                    <div class="value-fill" style="width: ${(value * 100)}%"></div>
+                                </div>
+                                <span class="value-score">${Math.round(value * 100)}%</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 好み -->
+                ${(preferences.likes?.length || preferences.dislikes?.length) ? `
+                <div class="section">
+                    <div class="section-title">好み・傾向</div>
+                    <div class="preferences-list">
+                        ${preferences.likes?.length ? `
+                        <div class="pref-group">
+                            <span class="pref-label">好む</span>
+                            ${preferences.likes.map(l => `<span class="pref-tag like">${l}</span>`).join('')}
+                        </div>
+                        ` : ''}
+                        ${preferences.dislikes?.length ? `
+                        <div class="pref-group">
+                            <span class="pref-label">避ける</span>
+                            ${preferences.dislikes.map(d => `<span class="pref-tag dislike">${d}</span>`).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 判断基準 -->
+                ${Object.keys(criteria).length > 0 ? `
+                <div class="section">
+                    <div class="section-title">判断基準</div>
+                    <div class="criteria-list">
+                        ${criteria.scheduling ? `
+                        <div class="criteria-item">
+                            <div class="criteria-label">予定を入れる時</div>
+                            <div class="criteria-value">${criteria.scheduling}</div>
+                        </div>
+                        ` : ''}
+                        ${criteria.places ? `
+                        <div class="criteria-item">
+                            <div class="criteria-label">場所を選ぶ時</div>
+                            <div class="criteria-value">${criteria.places}</div>
+                        </div>
+                        ` : ''}
+                        ${criteria.activities ? `
+                        <div class="criteria-item">
+                            <div class="criteria-label">活動を選ぶ時</div>
+                            <div class="criteria-value">${criteria.activities}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 洞察 -->
+                ${insights.length > 0 ? `
+                <div class="section">
+                    <div class="section-title">AIの洞察</div>
+                    <div class="insights-list">
+                        ${insights.map(i => `
+                            <div class="insight-item">
+                                <span class="insight-icon">💡</span>
+                                <span class="insight-text">${i}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- AI心得 -->
+                ${guidelines ? `
+                <div class="section">
+                    <div class="section-title">代理判断の心得</div>
+                    <div class="ai-guidelines">${guidelines}</div>
+                </div>
+                ` : ''}
+
+                <!-- メタ情報 -->
+                <div class="meta-info">
+                    <p>分析データ: ${profile.dataPoints || 0}件のライフログ</p>
+                    <p>最終更新: ${profile.generatedAt ? new Date(profile.generatedAt).toLocaleString('ja-JP') : '不明'}</p>
+                </div>
+            `;
+        }
+
+        function renderEmpty() {
+            content.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🧠</div>
+                    <div class="empty-title">プロファイルがまだありません</div>
+                    <div class="empty-desc">
+                        ライフログを記録すると、AIがあなたの<br>
+                        行動パターンや価値観を分析します。
+                    </div>
+                    <button class="generate-btn" id="generateBtn">
+                        プロファイルを生成
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('generateBtn')?.addEventListener('click', generateProfile);
+        }
+
+        async function loadProfile() {
+            content.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>プロファイルを読み込み中...</p>
+                </div>
+            `;
+
+            try {
+                const profileRef = ref(db, 'user_profile');
+                const snapshot = await get(profileRef);
+                const profile = snapshot.val();
+
+                if (profile && profile.personality) {
+                    renderProfile(profile);
+                } else {
+                    renderEmpty();
+                }
+            } catch (error) {
+                console.error('プロファイル読み込みエラー:', error);
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-title">読み込みエラー</div>
+                        <div class="empty-desc">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function generateProfile() {
+            const btn = document.getElementById('generateBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '生成中...';
+            }
+
+            content.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>ライフログを分析中...<br>しばらくお待ちください</p>
+                </div>
+            `;
+
+            // 注意: 実際のプロファイル生成はRaspberry Pi側で行う
+            // ここではメッセージを表示
+            setTimeout(() => {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔊</div>
+                        <div class="empty-title">音声で指示してください</div>
+                        <div class="empty-desc">
+                            デバイスに向かって<br>
+                            「プロファイルを生成して」と<br>
+                            話しかけてください。
+                        </div>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        // 更新ボタン
+        refreshBtn.addEventListener('click', loadProfile);
+
+        // 初期読み込み
+        loadProfile();
+    </script>
+</body>
+</html>
