@@ -70,7 +70,7 @@
             margin: 0 auto;
         }
 
-        /* プロファイルカード */
+        /* 個人情報カード */
         .profile-card {
             background: white;
             border-radius: 12px;
@@ -81,32 +81,117 @@
 
         .profile-header {
             text-align: center;
-            margin-bottom: 20px;
         }
 
         .profile-avatar {
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             background: linear-gradient(145deg, #4ade80, #22c55e);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 15px;
-            font-size: 2.5rem;
+            font-size: 2.8rem;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
 
-        .profile-summary {
-            font-size: 1.3rem;
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-avatar .edit-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 0.7rem;
+            padding: 4px;
+            display: none;
+        }
+
+        .profile-avatar:hover .edit-overlay {
+            display: block;
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
+        }
+
+        .profile-name-input {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            border: none;
+            border-bottom: 2px solid #4ade80;
+            text-align: center;
+            outline: none;
+            width: 80%;
+            padding: 5px;
+            background: transparent;
+        }
+
+        .profile-bio {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .profile-bio-input {
+            font-size: 0.9rem;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            outline: none;
+            width: 100%;
+            padding: 8px;
+            resize: none;
+            margin-bottom: 15px;
+        }
+
+        .profile-bio-input:focus {
+            border-color: #4ade80;
+        }
+
+        .edit-profile-btn {
+            background: none;
+            border: 1px solid #4ade80;
+            color: #22c55e;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .edit-profile-btn:active {
+            background: #e8f5e9;
+        }
+
+        .save-profile-btn {
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
         }
 
         .profile-traits {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            margin-top: 15px;
             gap: 8px;
         }
 
@@ -486,6 +571,73 @@
             spontaneity: '自発性'
         };
 
+        // ユーザー情報の取得・保存
+        function getUserInfo() {
+            const stored = localStorage.getItem('userProfile');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+            return { name: '', bio: '', avatarUrl: '' };
+        }
+
+        function saveUserInfo(info) {
+            localStorage.setItem('userProfile', JSON.stringify(info));
+        }
+
+        // 編集モードを開始
+        function startEditMode() {
+            const userInfo = getUserInfo();
+            const profileCard = document.querySelector('.profile-card');
+
+            profileCard.innerHTML = `
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">
+                        ${userInfo.avatarUrl ? `<img src="${userInfo.avatarUrl}" alt="">` : '👤'}
+                        <div class="edit-overlay">変更</div>
+                    </div>
+                    <input type="text" class="profile-name-input" id="nameInput"
+                           value="${userInfo.name || ''}" placeholder="名前を入力">
+                    <textarea class="profile-bio-input" id="bioInput"
+                              placeholder="自己紹介を入力" rows="2">${userInfo.bio || ''}</textarea>
+                    <button class="save-profile-btn" id="saveProfileBtn">保存</button>
+                </div>
+            `;
+
+            // 保存ボタン
+            document.getElementById('saveProfileBtn').addEventListener('click', () => {
+                const name = document.getElementById('nameInput').value;
+                const bio = document.getElementById('bioInput').value;
+                const currentInfo = getUserInfo();
+                saveUserInfo({ ...currentInfo, name, bio });
+                renderProfile(window.currentProfile || sampleProfile);
+            });
+
+            // アバター変更
+            document.getElementById('profileAvatar').addEventListener('click', handleAvatarClick);
+        }
+
+        // アバター変更処理
+        function handleAvatarClick() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const userInfo = getUserInfo();
+                        userInfo.avatarUrl = event.target.result;
+                        saveUserInfo(userInfo);
+                        const avatar = document.getElementById('profileAvatar');
+                        avatar.innerHTML = `<img src="${event.target.result}" alt=""><div class="edit-overlay">変更</div>`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        }
+
         function renderProfile(profile) {
             const personality = profile.personality || {};
             const lifestyle = profile.lifestyle || {};
@@ -498,17 +650,35 @@
             const activityByTime = profile.activityByTime || {};
             const keywords = profile.activityKeywords || {};
 
+            // 個人情報を取得
+            const userInfo = getUserInfo();
+
             content.innerHTML = `
-                <!-- プロファイルヘッダー -->
+                <!-- 個人情報セクション -->
                 <div class="profile-card">
                     <div class="profile-header">
-                        <div class="profile-avatar">🧠</div>
-                        <div class="profile-summary">${personality.summary || '分析中...'}</div>
+                        <div class="profile-avatar" id="profileAvatar">
+                            ${userInfo.avatarUrl ? `<img src="${userInfo.avatarUrl}" alt="">` : '👤'}
+                            <div class="edit-overlay">変更</div>
+                        </div>
+                        <div class="profile-name" id="profileName">${userInfo.name || '名前を設定'}</div>
+                        <div class="profile-bio" id="profileBio">${userInfo.bio || '自己紹介を追加'}</div>
+                        <button class="edit-profile-btn" id="editProfileBtn">編集</button>
+                    </div>
+                </div>
+
+                <!-- AIが分析した特徴 -->
+                ${personality.summary ? `
+                <div class="section">
+                    <div class="section-title">AIが分析した特徴</div>
+                    <div style="text-align: center; padding: 10px 0;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 10px;">${personality.summary}</div>
                         <div class="profile-traits">
                             ${(personality.traits || []).map(t => `<span class="trait-tag">${t}</span>`).join('')}
                         </div>
                     </div>
                 </div>
+                ` : ''}
 
                 <!-- 睡眠スケジュール -->
                 <div class="section">
@@ -664,6 +834,17 @@
                     <p>最終更新: ${profile.generatedAt ? new Date(profile.generatedAt).toLocaleString('ja-JP') : '不明'}</p>
                 </div>
             `;
+
+            // 現在のプロファイルを保存
+            window.currentProfile = profile;
+
+            // 編集ボタンのイベントリスナー
+            document.getElementById('editProfileBtn')?.addEventListener('click', startEditMode);
+
+            // アバタークリックのイベントリスナー
+            document.getElementById('profileAvatar')?.addEventListener('click', () => {
+                startEditMode();
+            });
         }
 
         // サンプルプロファイル（プレビュー用）
