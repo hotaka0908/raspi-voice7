@@ -654,6 +654,55 @@
             `;
         }
 
+        // サンプルプロファイル（プレビュー用）
+        const sampleProfile = {
+            generatedAt: new Date().toISOString(),
+            dataPoints: 1250,
+            personality: {
+                summary: "効率重視の朝型クリエイター",
+                traits: ["集中力が高い", "ルーティン好き", "一人時間を大切にする"]
+            },
+            sleepSchedule: {
+                wakeTime: "06:30",
+                sleepTime: "23:00",
+                type: "朝型"
+            },
+            lifestyle: {
+                morning: "カフェで集中作業",
+                afternoon: "外出・打ち合わせ",
+                evening: "自宅でリラックス",
+                weekend: "自宅中心で過ごす"
+            },
+            activityKeywords: {
+                "PC作業": 156,
+                "外出": 89,
+                "食事": 72,
+                "自宅": 45
+            },
+            values: {
+                efficiency: 0.85,
+                routine: 0.75,
+                solitude: 0.70,
+                socialActivity: 0.40,
+                spontaneity: 0.30
+            },
+            preferences: {
+                likes: ["静かな環境", "決まったルーティン", "効率的な移動"],
+                dislikes: ["急な予定変更", "長時間の会議"]
+            },
+            decisionCriteria: {
+                scheduling: "午前中は集中作業に確保、午後に予定を入れる",
+                places: "馴染みの場所を優先、新規開拓は余裕がある時",
+                activities: "効率と目的を重視、無駄な時間は避ける"
+            },
+            insights: [
+                "午前中の予定は避けた方が良い（集中作業時間）",
+                "同じカフェを繰り返し利用する傾向がある",
+                "週末は予定を入れず自由時間として確保したい"
+            ],
+            aiGuidelines: "効率を最優先に考え、午前中の邪魔を避ける。新しい提案より確実な選択肢を推奨する。"
+        };
+
         function renderEmpty() {
             content.innerHTML = `
                 <div class="empty-state">
@@ -663,13 +712,15 @@
                         ライフログを記録すると、AIがあなたの<br>
                         行動パターンや価値観を分析します。
                     </div>
-                    <button class="generate-btn" id="generateBtn">
-                        プロファイルを生成
+                    <button class="generate-btn" id="previewBtn">
+                        サンプルを見る
                     </button>
                 </div>
             `;
 
-            document.getElementById('generateBtn')?.addEventListener('click', generateProfile);
+            document.getElementById('previewBtn')?.addEventListener('click', () => {
+                renderProfile(sampleProfile);
+            });
         }
 
         async function loadProfile() {
@@ -694,11 +745,20 @@
                 console.error('プロファイル読み込みエラー:', error);
                 content.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">⚠️</div>
-                        <div class="empty-title">読み込みエラー</div>
-                        <div class="empty-desc">${error.message}</div>
+                        <div class="empty-icon">🧠</div>
+                        <div class="empty-title">プロファイルを読み込めません</div>
+                        <div class="empty-desc">
+                            データの取得に失敗しました。<br>
+                            サンプルで表示イメージを確認できます。
+                        </div>
+                        <button class="generate-btn" id="previewBtn">
+                            サンプルを見る
+                        </button>
                     </div>
                 `;
+                document.getElementById('previewBtn')?.addEventListener('click', () => {
+                    renderProfile(sampleProfile);
+                });
             }
         }
 
