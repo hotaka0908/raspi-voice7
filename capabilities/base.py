@@ -19,6 +19,7 @@ class CapabilityCategory(Enum):
     MEMORY = "記録する"
     CALL = "通話する"
     MUSIC = "聴く"
+    SYSTEM = "設定する"
 
 
 @dataclass

@@ -17,6 +17,7 @@ from .videocall import VIDEOCALL_CAPABILITIES
 from .detail_info import DETAIL_INFO_CAPABILITIES
 from .music import MUSIC_CAPABILITIES
 from .profile import PROFILE_CAPABILITIES
+from .volume import VOLUME_CAPABILITIES
 
 
 class CapabilityExecutor:
@@ -38,7 +39,8 @@ class CapabilityExecutor:
             VIDEOCALL_CAPABILITIES +
             DETAIL_INFO_CAPABILITIES +
             MUSIC_CAPABILITIES +
-            PROFILE_CAPABILITIES
+            PROFILE_CAPABILITIES +
+            VOLUME_CAPABILITIES
         )
         for cap in all_capabilities:
             self._capabilities[cap.name] = cap

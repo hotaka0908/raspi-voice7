@@ -13,6 +13,26 @@ from typing import Optional, Callable
 
 from config import Config
 
+# AI応答の音量レベル（0.5〜2.0、デフォルト1.0）
+_voice_volume: float = 1.0
+
+
+def get_voice_volume() -> float:
+    """現在の音声音量を取得"""
+    return _voice_volume
+
+
+def set_voice_volume(volume: float) -> float:
+    """音声音量を設定（0.5〜2.0の範囲）"""
+    global _voice_volume
+    _voice_volume = max(0.5, min(2.0, volume))
+    return _voice_volume
+
+
+def adjust_voice_volume(delta: float) -> float:
+    """音声音量を調整（delta分増減）"""
+    return set_voice_volume(_voice_volume + delta)
+
 
 def find_audio_device(p: pyaudio.PyAudio, device_type: str = "input") -> Optional[int]:
     """オーディオデバイスを自動検出"""
@@ -161,11 +181,12 @@ class AudioHandler:
             self.output_stream = None
 
     def play_audio_chunk(self, audio_data: bytes) -> None:
-        """API出力（24kHz）を48kHzにリサンプリングして再生"""
+        """API出力（24kHz）を48kHzにリサンプリングして再生（音量適用）"""
         if self.output_stream and self.is_playing:
             try:
                 resampled = resample_audio(
-                    audio_data, Config.RECEIVE_SAMPLE_RATE, Config.OUTPUT_SAMPLE_RATE
+                    audio_data, Config.RECEIVE_SAMPLE_RATE, Config.OUTPUT_SAMPLE_RATE,
+                    gain=_voice_volume
                 )
                 self.output_stream.write(resampled)
             except Exception:

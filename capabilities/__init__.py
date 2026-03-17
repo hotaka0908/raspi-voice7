@@ -49,6 +49,7 @@ from .profile import (
     generate_user_profile,
     get_profile_from_firebase
 )
+from .volume import VOLUME_CAPABILITIES
 
 __all__ = [
     'Capability',
@@ -100,4 +101,5 @@ __all__ = [
     'PROFILE_CAPABILITIES',
     'generate_user_profile',
     'get_profile_from_firebase',
+    'VOLUME_CAPABILITIES',
 ]
