@@ -73,6 +73,7 @@
 
         /* カードコンテナ - 3Dフリップ用 */
         .card-container {
+            position: relative;
             width: 100%;
             max-width: 330px;
             cursor: pointer;
@@ -573,6 +574,217 @@
             font-size: 0.5rem;
         }
 
+        /* AIキャラバッジ */
+        .ai-char-badge {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            cursor: pointer;
+            z-index: 50;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .ai-char-badge:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .ai-char-badge::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: #4ade80;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        /* AI設定モーダル */
+        .ai-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .ai-modal.show {
+            display: flex;
+        }
+
+        .ai-modal-content {
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 360px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255,107,157,0.3);
+            box-shadow: 0 0 30px rgba(255,107,157,0.2);
+        }
+
+        .ai-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .ai-modal-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .ai-modal-title {
+            flex: 1;
+        }
+
+        .ai-modal-title h2 {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .ai-modal-title p {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .ai-modal-close {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #888;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .ai-setting-section {
+            margin-bottom: 20px;
+        }
+
+        .ai-setting-label {
+            font-size: 0.8rem;
+            color: #ff6b9d;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-setting-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .ai-option {
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: #ccc;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ai-option:hover {
+            background: rgba(255,107,157,0.1);
+            border-color: rgba(255,107,157,0.3);
+        }
+
+        .ai-option.selected {
+            background: linear-gradient(145deg, rgba(255,107,157,0.2), rgba(196,69,105,0.2));
+            border-color: #ff6b9d;
+            color: #fff;
+        }
+
+        .ai-option-icon {
+            margin-right: 6px;
+        }
+
+        .ai-preview-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ai-preview-label {
+            font-size: 0.7rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .ai-preview-text {
+            font-size: 0.9rem;
+            color: #fff;
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        .ai-modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ai-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .ai-btn.cancel {
+            background: rgba(255,255,255,0.1);
+            color: #888;
+        }
+
+        .ai-btn.save {
+            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            color: #fff;
+        }
+
+        .ai-btn.save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255,107,157,0.4);
+        }
+
         /* ========== 詳細ビュースタイル ========== */
         .detail-content {
             display: flex;
@@ -966,6 +1178,61 @@
         </div>
     </div>
 
+    <!-- AI設定モーダル -->
+    <div class="ai-modal" id="aiModal">
+        <div class="ai-modal-content">
+            <div class="ai-modal-header">
+                <div class="ai-modal-avatar">🤖</div>
+                <div class="ai-modal-title">
+                    <h2>AIアシスタント設定</h2>
+                    <p>話し方や性格をカスタマイズ</p>
+                </div>
+                <button class="ai-modal-close" id="aiModalClose">×</button>
+            </div>
+
+            <div class="ai-setting-section">
+                <div class="ai-setting-label">🎭 性格</div>
+                <div class="ai-setting-options" id="personalityOptions">
+                    <div class="ai-option" data-value="friendly"><span class="ai-option-icon">😊</span>フレンドリー</div>
+                    <div class="ai-option" data-value="calm"><span class="ai-option-icon">😌</span>落ち着き</div>
+                    <div class="ai-option" data-value="energetic"><span class="ai-option-icon">⚡</span>元気</div>
+                    <div class="ai-option" data-value="cool"><span class="ai-option-icon">😎</span>クール</div>
+                </div>
+            </div>
+
+            <div class="ai-setting-section">
+                <div class="ai-setting-label">💬 話し方</div>
+                <div class="ai-setting-options" id="speechStyleOptions">
+                    <div class="ai-option" data-value="polite"><span class="ai-option-icon">🎩</span>敬語</div>
+                    <div class="ai-option" data-value="casual"><span class="ai-option-icon">✌️</span>タメ口</div>
+                    <div class="ai-option" data-value="butler"><span class="ai-option-icon">🎀</span>執事風</div>
+                    <div class="ai-option" data-value="kawaii"><span class="ai-option-icon">💕</span>かわいい</div>
+                </div>
+            </div>
+
+            <div class="ai-setting-section">
+                <div class="ai-setting-label">🔊 声のトーン</div>
+                <div class="ai-setting-options" id="voiceToneOptions">
+                    <div class="ai-option" data-value="normal"><span class="ai-option-icon">🔈</span>普通</div>
+                    <div class="ai-option" data-value="high"><span class="ai-option-icon">🎵</span>高め</div>
+                    <div class="ai-option" data-value="low"><span class="ai-option-icon">🎸</span>低め</div>
+                </div>
+            </div>
+
+            <div class="ai-preview-section">
+                <div class="ai-preview-label">プレビュー</div>
+                <div class="ai-preview-text" id="aiPreviewText">
+                    「こんにちは！何かお手伝いできることはありますか？」
+                </div>
+            </div>
+
+            <div class="ai-modal-buttons">
+                <button class="ai-btn cancel" id="aiCancelBtn">キャンセル</button>
+                <button class="ai-btn save" id="aiSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
@@ -1048,6 +1315,114 @@
 
         document.getElementById('editCancelBtn').addEventListener('click', hideEditModal);
 
+        // ========== AI設定機能 ==========
+        const aiModal = document.getElementById('aiModal');
+        let tempAiSettings = {};
+
+        const previewTexts = {
+            friendly: {
+                polite: '「こんにちは！何かお手伝いできることはありますか？」',
+                casual: '「やっほー！何か手伝おうか？」',
+                butler: '「ご主人様、本日も何かお手伝いいたしましょうか？」',
+                kawaii: '「こんにちはぁ～！なにかお手伝いできるかな？」'
+            },
+            calm: {
+                polite: '「こんにちは。何かございましたらお申し付けください。」',
+                casual: '「やあ。何かあったら言ってね。」',
+                butler: '「お呼びでございますか。何なりとお申し付けください。」',
+                kawaii: '「こんにちは...。何かあったら言ってね...。」'
+            },
+            energetic: {
+                polite: '「こんにちは！今日も元気に頑張りましょう！」',
+                casual: '「よっしゃー！今日も一緒に頑張ろうぜ！」',
+                butler: '「ご主人様！本日も全力でお仕えいたします！」',
+                kawaii: '「わーい！今日も一緒にがんばろっ！」'
+            },
+            cool: {
+                polite: '「...何か用ですか。」',
+                casual: '「...なんか用？」',
+                butler: '「...お呼びですか、ご主人様。」',
+                kawaii: '「...ん？なぁに？」'
+            }
+        };
+
+        function getAiSettings() {
+            const stored = localStorage.getItem('aiSettings');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+            return { personality: 'friendly', speechStyle: 'polite', voiceTone: 'normal' };
+        }
+
+        function saveAiSettings(settings) {
+            localStorage.setItem('aiSettings', JSON.stringify(settings));
+        }
+
+        function updatePreviewText() {
+            const personality = tempAiSettings.personality || 'friendly';
+            const speechStyle = tempAiSettings.speechStyle || 'polite';
+            const previewText = previewTexts[personality]?.[speechStyle] || previewTexts.friendly.polite;
+            document.getElementById('aiPreviewText').textContent = previewText;
+        }
+
+        function showAiModal() {
+            tempAiSettings = { ...getAiSettings() };
+
+            // 現在の選択を反映
+            document.querySelectorAll('#personalityOptions .ai-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === tempAiSettings.personality);
+            });
+            document.querySelectorAll('#speechStyleOptions .ai-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === tempAiSettings.speechStyle);
+            });
+            document.querySelectorAll('#voiceToneOptions .ai-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === tempAiSettings.voiceTone);
+            });
+
+            updatePreviewText();
+            aiModal.classList.add('show');
+        }
+
+        function hideAiModal() {
+            aiModal.classList.remove('show');
+        }
+
+        // 性格オプションのクリックイベント
+        document.querySelectorAll('#personalityOptions .ai-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('#personalityOptions .ai-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+                tempAiSettings.personality = el.dataset.value;
+                updatePreviewText();
+            });
+        });
+
+        // 話し方オプションのクリックイベント
+        document.querySelectorAll('#speechStyleOptions .ai-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('#speechStyleOptions .ai-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+                tempAiSettings.speechStyle = el.dataset.value;
+                updatePreviewText();
+            });
+        });
+
+        // 声トーンオプションのクリックイベント
+        document.querySelectorAll('#voiceToneOptions .ai-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('#voiceToneOptions .ai-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+                tempAiSettings.voiceTone = el.dataset.value;
+            });
+        });
+
+        document.getElementById('aiModalClose').addEventListener('click', hideAiModal);
+        document.getElementById('aiCancelBtn').addEventListener('click', hideAiModal);
+        document.getElementById('aiSaveBtn').addEventListener('click', () => {
+            saveAiSettings(tempAiSettings);
+            hideAiModal();
+        });
+
         function toggleView() {
             isDetailView = !isDetailView;
             const card = document.querySelector('.card');
@@ -1060,6 +1435,11 @@
             const card = document.querySelector('.card');
             if (card) {
                 card.addEventListener('click', (e) => {
+                    if (e.target.closest('.ai-char-badge')) {
+                        e.stopPropagation();
+                        showAiModal();
+                        return;
+                    }
                     if (e.target.closest('.edit-trigger')) {
                         e.stopPropagation();
                         showEditModal();
@@ -1087,6 +1467,7 @@
 
             content.innerHTML = `
                 <div class="card-container">
+                    <div class="ai-char-badge" title="AI設定">🤖</div>
                     <div class="card">
                         <!-- 表面 -->
                         <div class="card-face front">
