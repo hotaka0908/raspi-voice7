@@ -66,6 +66,7 @@
             max-width: 400px;
             margin: 0 auto;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: calc(100vh - 60px);
@@ -574,41 +575,289 @@
             font-size: 0.5rem;
         }
 
-        /* AIキャラバッジ */
-        .ai-char-badge {
+        /* AIミニカード */
+        .ai-mini-card-container {
+            width: 100%;
+            max-width: 165px;
+            margin-top: 15px;
+            cursor: pointer;
+            perspective: 500px;
+        }
+
+        .ai-mini-card {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 63 / 88;
+            transform-style: preserve-3d;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ai-mini-card:hover {
+            transform: rotateY(10deg) rotateX(-5deg);
+        }
+
+        .ai-mini-card-face {
             position: absolute;
-            top: -15px;
-            right: -15px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #ff6b9d, #c44569);
-            border: 3px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(
+                135deg,
+                #c44569 0%,
+                #ff6b9d 10%,
+                #c44569 20%,
+                #ff6b9d 30%,
+                #c44569 40%,
+                #ff6b9d 50%,
+                #c44569 60%,
+                #ff6b9d 70%,
+                #c44569 80%,
+                #ff6b9d 90%,
+                #c44569 100%
+            );
+            border: 3px solid #8b2a4a;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .ai-mini-card-face::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(
+                    45deg,
+                    rgba(255, 255, 255, 0.2) 0%,
+                    rgba(255, 200, 255, 0.2) 25%,
+                    rgba(200, 255, 255, 0.2) 50%,
+                    rgba(255, 255, 200, 0.2) 75%,
+                    rgba(255, 255, 255, 0.2) 100%
+                );
+            background-size: 400% 400%;
+            animation: rainbowShift 4s ease infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .ai-mini-card-face::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.6) 0%, transparent 8%),
+                radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.5) 0%, transparent 6%);
+            animation: sparkle 3s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .ai-mini-card-inner {
+            position: relative;
+            margin: 4px;
+            height: calc(100% - 8px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            padding: 4px;
+        }
+
+        .ai-mini-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 4px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+            border-radius: 3px;
+        }
+
+        .ai-mini-badge {
+            background: linear-gradient(180deg, #6b5ce7, #4834d4);
+            color: white;
+            font-size: 0.35rem;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .ai-mini-name {
+            flex: 1;
+            font-size: 0.6rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .ai-mini-hp {
+            font-size: 0.5rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .ai-mini-image {
+            flex: 1;
+            margin: 3px 0;
+            background: radial-gradient(ellipse at center, #a080ff 0%, #6040c0 50%, #4020a0 100%);
+            border-radius: 4px;
+            border: 2px solid rgba(255,255,255,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
-            cursor: pointer;
-            z-index: 50;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 1.8rem;
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.2);
         }
 
-        .ai-char-badge:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        /* AIキャラクター犬 */
+        .ai-face {
+            position: relative;
+            width: 50px;
+            height: 45px;
+            background: linear-gradient(145deg, #f5deb3, #deb887);
+            border-radius: 50% 50% 45% 45%;
+            box-shadow:
+                0 4px 8px rgba(0,0,0,0.3),
+                inset 0 -3px 6px rgba(0,0,0,0.1),
+                inset 0 3px 6px rgba(255,255,255,0.5);
         }
 
-        .ai-char-badge::after {
+        /* 耳 */
+        .ai-ears {
+            position: absolute;
+            top: -8px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 2px;
+        }
+
+        .ai-ear {
+            width: 14px;
+            height: 20px;
+            background: linear-gradient(145deg, #d2a679, #b8956e);
+            border-radius: 50% 50% 40% 40%;
+            transform: rotate(-15deg);
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .ai-ear:last-child {
+            transform: rotate(15deg);
+        }
+
+        .ai-eyes {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 14px;
+        }
+
+        .ai-eye {
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(145deg, #2a1810, #4a2820);
+            border-radius: 50%;
+            position: relative;
+            animation: blink 3s ease-in-out infinite;
+        }
+
+        .ai-eye::after {
             content: '';
             position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 12px;
-            height: 12px;
-            background: #4ade80;
+            top: 2px;
+            left: 2px;
+            width: 4px;
+            height: 4px;
+            background: rgba(255,255,255,0.9);
             border-radius: 50%;
-            border: 2px solid #fff;
+        }
+
+        @keyframes blink {
+            0%, 45%, 55%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.1); }
+        }
+
+        /* 鼻 */
+        .ai-nose {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 8px;
+            background: linear-gradient(145deg, #3a2a2a, #2a1a1a);
+            border-radius: 50% 50% 45% 45%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .ai-mouth {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            border: 2px solid #8b6914;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* 舌 */
+        .ai-tongue {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 6px;
+            background: linear-gradient(180deg, #ff8888, #ff6666);
+            border-radius: 0 0 50% 50%;
+            animation: pant 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pant {
+            0%, 100% { height: 6px; }
+            50% { height: 10px; }
+        }
+
+        .ai-cheeks {
+            display: none;
+        }
+
+        .ai-cheek {
+            display: none;
+        }
+
+        .ai-mini-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            padding: 4px;
+        }
+
+        .ai-mini-trait {
+            font-size: 0.4rem;
+            color: #fff;
+            text-align: center;
+            font-weight: 600;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        }
+
+        .ai-mini-desc {
+            font-size: 0.35rem;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            margin-top: 2px;
         }
 
         /* AI設定モーダル */
@@ -619,27 +868,84 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             z-index: 300;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
         }
 
         .ai-modal.show {
             display: flex;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .ai-modal-content {
-            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
-            border-radius: 20px;
-            padding: 25px;
+            position: relative;
+            background: linear-gradient(
+                135deg,
+                #c44569 0%,
+                #ff6b9d 15%,
+                #c44569 30%,
+                #ff6b9d 45%,
+                #c44569 60%,
+                #ff6b9d 75%,
+                #c44569 90%,
+                #ff6b9d 100%
+            );
+            border-radius: 16px;
+            padding: 5px;
             width: 100%;
-            max-width: 360px;
-            max-height: 85vh;
+            max-width: 340px;
+            max-height: 90vh;
+            border: 4px solid #8b2a4a;
+            box-shadow:
+                0 0 40px rgba(255,107,157,0.4),
+                0 0 80px rgba(255,107,157,0.2),
+                inset 0 0 20px rgba(255,255,255,0.1);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: scale(0.9) translateY(20px); }
+            to { transform: scale(1) translateY(0); }
+        }
+
+        .ai-modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 12px;
+            background: linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(255, 200, 255, 0.2) 25%,
+                rgba(200, 255, 255, 0.2) 50%,
+                rgba(255, 255, 200, 0.2) 75%,
+                rgba(255, 255, 255, 0.3) 100%
+            );
+            background-size: 400% 400%;
+            animation: rainbowShift 4s ease infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ai-modal-inner {
+            position: relative;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%);
+            border-radius: 12px;
+            padding: 20px;
             overflow-y: auto;
-            border: 2px solid rgba(255,107,157,0.3);
-            box-shadow: 0 0 30px rgba(255,107,157,0.2);
+            max-height: calc(90vh - 30px);
+            z-index: 1;
         }
 
         .ai-modal-header {
@@ -648,18 +954,22 @@
             gap: 12px;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 2px solid rgba(255,107,157,0.3);
         }
 
         .ai-modal-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #ff6b9d, #c44569);
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #a080ff, #6040c0);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 2rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow:
+                0 4px 15px rgba(160,128,255,0.4),
+                inset 0 0 20px rgba(255,255,255,0.2);
         }
 
         .ai-modal-title {
@@ -667,67 +977,85 @@
         }
 
         .ai-modal-title h2 {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
+            font-weight: 800;
             color: #fff;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 10px rgba(255,107,157,0.5);
         }
 
         .ai-modal-title p {
             font-size: 0.75rem;
-            color: #888;
+            color: #ff6b9d;
         }
 
         .ai-modal-close {
             background: rgba(255,255,255,0.1);
-            border: none;
-            color: #888;
-            width: 32px;
-            height: 32px;
+            border: 2px solid rgba(255,255,255,0.2);
+            color: #fff;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-
-        .ai-setting-section {
-            margin-bottom: 20px;
-        }
-
-        .ai-setting-label {
-            font-size: 0.8rem;
-            color: #ff6b9d;
-            font-weight: 600;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .ai-setting-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .ai-option {
-            padding: 10px 16px;
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: #ccc;
-            font-size: 0.85rem;
+            font-size: 1.3rem;
             cursor: pointer;
             transition: all 0.2s;
         }
 
+        .ai-modal-close:hover {
+            background: rgba(255,107,157,0.3);
+            border-color: #ff6b9d;
+        }
+
+        .ai-setting-section {
+            margin-bottom: 18px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .ai-setting-label {
+            font-size: 0.85rem;
+            color: #ff6b9d;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 0 10px rgba(255,107,157,0.5);
+        }
+
+        .ai-setting-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .ai-option {
+            padding: 12px 10px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: #aaa;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
         .ai-option:hover {
-            background: rgba(255,107,157,0.1);
-            border-color: rgba(255,107,157,0.3);
+            background: linear-gradient(145deg, rgba(255,107,157,0.15), rgba(255,107,157,0.08));
+            border-color: rgba(255,107,157,0.4);
+            color: #fff;
+            transform: translateY(-2px);
         }
 
         .ai-option.selected {
-            background: linear-gradient(145deg, rgba(255,107,157,0.2), rgba(196,69,105,0.2));
+            background: linear-gradient(145deg, rgba(255,107,157,0.3), rgba(196,69,105,0.3));
             border-color: #ff6b9d;
             color: #fff;
+            box-shadow: 0 0 15px rgba(255,107,157,0.3);
         }
 
         .ai-option-icon {
@@ -735,20 +1063,41 @@
         }
 
         .ai-preview-section {
-            background: rgba(0,0,0,0.3);
+            background: linear-gradient(145deg, rgba(160,128,255,0.15), rgba(96,64,192,0.15));
+            border: 2px solid rgba(160,128,255,0.3);
             border-radius: 12px;
             padding: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-preview-section::before {
+            content: '💬';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 3rem;
+            opacity: 0.1;
         }
 
         .ai-preview-label {
             font-size: 0.7rem;
-            color: #666;
-            margin-bottom: 8px;
+            color: #a080ff;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ai-preview-label::before {
+            content: '▶';
+            font-size: 0.6rem;
         }
 
         .ai-preview-text {
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: #fff;
             line-height: 1.5;
             font-style: italic;
@@ -756,33 +1105,44 @@
 
         .ai-modal-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         .ai-btn {
             flex: 1;
-            padding: 14px;
-            border-radius: 12px;
+            padding: 14px 20px;
+            border-radius: 10px;
             font-size: 0.95rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            border: none;
+            border: 2px solid transparent;
             transition: all 0.2s;
         }
 
         .ai-btn.cancel {
-            background: rgba(255,255,255,0.1);
+            background: transparent;
+            border-color: rgba(255,255,255,0.2);
             color: #888;
+        }
+
+        .ai-btn.cancel:hover {
+            border-color: rgba(255,255,255,0.4);
+            color: #fff;
         }
 
         .ai-btn.save {
             background: linear-gradient(145deg, #ff6b9d, #c44569);
             color: #fff;
+            box-shadow: 0 4px 15px rgba(255,107,157,0.3);
         }
 
         .ai-btn.save:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(255,107,157,0.4);
+            box-shadow: 0 6px 20px rgba(255,107,157,0.5);
+        }
+
+        .ai-btn.save:active {
+            transform: translateY(0);
         }
 
         /* ========== 詳細ビュースタイル ========== */
@@ -1181,54 +1541,70 @@
     <!-- AI設定モーダル -->
     <div class="ai-modal" id="aiModal">
         <div class="ai-modal-content">
-            <div class="ai-modal-header">
-                <div class="ai-modal-avatar">🤖</div>
-                <div class="ai-modal-title">
-                    <h2>AIアシスタント設定</h2>
-                    <p>話し方や性格をカスタマイズ</p>
+            <div class="ai-modal-inner">
+                <div class="ai-modal-header">
+                    <div class="ai-modal-avatar">
+                        <div class="ai-face" style="width:42px;height:38px;">
+                            <div class="ai-ears">
+                                <div class="ai-ear"></div>
+                                <div class="ai-ear"></div>
+                            </div>
+                            <div class="ai-eyes" style="top:12px;gap:12px;">
+                                <div class="ai-eye" style="width:8px;height:8px;"></div>
+                                <div class="ai-eye" style="width:8px;height:8px;"></div>
+                            </div>
+                            <div class="ai-nose" style="bottom:10px;width:8px;height:6px;"></div>
+                            <div class="ai-mouth" style="bottom:4px;"></div>
+                            <div class="ai-tongue" style="bottom:1px;width:6px;height:5px;"></div>
+                        </div>
+                    </div>
+                    <div class="ai-modal-title">
+                        <h2>AIアシスタント設定</h2>
+                        <p>話し方や性格をカスタマイズ</p>
+                    </div>
+                    <button class="ai-modal-close" id="aiModalClose">×</button>
                 </div>
-                <button class="ai-modal-close" id="aiModalClose">×</button>
-            </div>
 
-            <div class="ai-setting-section">
-                <div class="ai-setting-label">🎭 性格</div>
-                <div class="ai-setting-options" id="personalityOptions">
-                    <div class="ai-option" data-value="friendly"><span class="ai-option-icon">😊</span>フレンドリー</div>
-                    <div class="ai-option" data-value="calm"><span class="ai-option-icon">😌</span>落ち着き</div>
-                    <div class="ai-option" data-value="energetic"><span class="ai-option-icon">⚡</span>元気</div>
-                    <div class="ai-option" data-value="cool"><span class="ai-option-icon">😎</span>クール</div>
+                <div class="ai-setting-section">
+                    <div class="ai-setting-label">🎭 性格</div>
+                    <div class="ai-setting-options" id="personalityOptions">
+                        <div class="ai-option" data-value="friendly"><span class="ai-option-icon">😊</span>フレンドリー</div>
+                        <div class="ai-option" data-value="calm"><span class="ai-option-icon">😌</span>落ち着き</div>
+                        <div class="ai-option" data-value="energetic"><span class="ai-option-icon">⚡</span>元気</div>
+                        <div class="ai-option" data-value="cool"><span class="ai-option-icon">😎</span>クール</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="ai-setting-section">
-                <div class="ai-setting-label">💬 話し方</div>
-                <div class="ai-setting-options" id="speechStyleOptions">
-                    <div class="ai-option" data-value="polite"><span class="ai-option-icon">🎩</span>敬語</div>
-                    <div class="ai-option" data-value="casual"><span class="ai-option-icon">✌️</span>タメ口</div>
-                    <div class="ai-option" data-value="butler"><span class="ai-option-icon">🎀</span>執事風</div>
-                    <div class="ai-option" data-value="kawaii"><span class="ai-option-icon">💕</span>かわいい</div>
+                <div class="ai-setting-section">
+                    <div class="ai-setting-label">💬 話し方</div>
+                    <div class="ai-setting-options" id="speechStyleOptions">
+                        <div class="ai-option" data-value="polite"><span class="ai-option-icon">🎩</span>敬語</div>
+                        <div class="ai-option" data-value="casual"><span class="ai-option-icon">✌️</span>タメ口</div>
+                        <div class="ai-option" data-value="butler"><span class="ai-option-icon">🎀</span>執事風</div>
+                        <div class="ai-option" data-value="kawaii"><span class="ai-option-icon">💕</span>かわいい</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="ai-setting-section">
-                <div class="ai-setting-label">🔊 声のトーン</div>
-                <div class="ai-setting-options" id="voiceToneOptions">
-                    <div class="ai-option" data-value="normal"><span class="ai-option-icon">🔈</span>普通</div>
-                    <div class="ai-option" data-value="high"><span class="ai-option-icon">🎵</span>高め</div>
-                    <div class="ai-option" data-value="low"><span class="ai-option-icon">🎸</span>低め</div>
+                <div class="ai-setting-section">
+                    <div class="ai-setting-label">🔊 声のトーン</div>
+                    <div class="ai-setting-options" id="voiceToneOptions">
+                        <div class="ai-option" data-value="normal"><span class="ai-option-icon">🔈</span>普通</div>
+                        <div class="ai-option" data-value="high"><span class="ai-option-icon">🎵</span>高め</div>
+                        <div class="ai-option" data-value="low"><span class="ai-option-icon">🎸</span>低め</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="ai-preview-section">
-                <div class="ai-preview-label">プレビュー</div>
-                <div class="ai-preview-text" id="aiPreviewText">
-                    「こんにちは！何かお手伝いできることはありますか？」
+                <div class="ai-preview-section">
+                    <div class="ai-preview-label">プレビュー</div>
+                    <div class="ai-preview-text" id="aiPreviewText">
+                        「こんにちは！何かお手伝いできることはありますか？」
+                    </div>
                 </div>
-            </div>
 
-            <div class="ai-modal-buttons">
-                <button class="ai-btn cancel" id="aiCancelBtn">キャンセル</button>
-                <button class="ai-btn save" id="aiSaveBtn">保存</button>
+                <div class="ai-modal-buttons">
+                    <button class="ai-btn cancel" id="aiCancelBtn">キャンセル</button>
+                    <button class="ai-btn save" id="aiSaveBtn">保存</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1435,17 +1811,20 @@
             const card = document.querySelector('.card');
             if (card) {
                 card.addEventListener('click', (e) => {
-                    if (e.target.closest('.ai-char-badge')) {
-                        e.stopPropagation();
-                        showAiModal();
-                        return;
-                    }
                     if (e.target.closest('.edit-trigger')) {
                         e.stopPropagation();
                         showEditModal();
                         return;
                     }
                     toggleView();
+                });
+            }
+
+            const aiMiniCard = document.querySelector('.ai-mini-card-container');
+            if (aiMiniCard) {
+                aiMiniCard.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showAiModal();
                 });
             }
         }
@@ -1465,9 +1844,22 @@
             const topValue = Object.entries(values).sort((a, b) => b[1] - a[1])[0];
             const damageValue = topValue ? Math.round(topValue[1] * 150) : 120;
 
+            const aiSettings = getAiSettings();
+            const aiPersonalityLabels = {
+                friendly: 'フレンドリー',
+                calm: '落ち着き',
+                energetic: '元気',
+                cool: 'クール'
+            };
+            const aiSpeechLabels = {
+                polite: '敬語',
+                casual: 'タメ口',
+                butler: '執事風',
+                kawaii: 'かわいい'
+            };
+
             content.innerHTML = `
                 <div class="card-container">
-                    <div class="ai-char-badge" title="AI設定">🤖</div>
                     <div class="card">
                         <!-- 表面 -->
                         <div class="card-face front">
@@ -1639,6 +2031,38 @@
                                         </div>
                                     </div>
                                     ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ai-mini-card-container">
+                    <div class="ai-mini-card">
+                        <div class="ai-mini-card-face">
+                            <div class="ai-mini-card-inner">
+                                <div class="ai-mini-header">
+                                    <div class="ai-mini-badge">AI</div>
+                                    <div class="ai-mini-name">アシスタント</div>
+                                    <div class="ai-mini-hp">HP∞</div>
+                                </div>
+                                <div class="ai-mini-image">
+                                    <div class="ai-face">
+                                        <div class="ai-ears">
+                                            <div class="ai-ear"></div>
+                                            <div class="ai-ear"></div>
+                                        </div>
+                                        <div class="ai-eyes">
+                                            <div class="ai-eye"></div>
+                                            <div class="ai-eye"></div>
+                                        </div>
+                                        <div class="ai-nose"></div>
+                                        <div class="ai-mouth"></div>
+                                        <div class="ai-tongue"></div>
+                                    </div>
+                                </div>
+                                <div class="ai-mini-info">
+                                    <div class="ai-mini-trait">${aiPersonalityLabels[aiSettings.personality] || 'フレンドリー'} × ${aiSpeechLabels[aiSettings.speechStyle] || '敬語'}</div>
+                                    <div class="ai-mini-desc">タップして設定</div>
                                 </div>
                             </div>
                         </div>
