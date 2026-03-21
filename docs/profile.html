@@ -721,8 +721,8 @@
         /* AIキャラクター犬 */
         .ai-face {
             position: relative;
-            width: 50px;
-            height: 45px;
+            width: 70px;
+            height: 63px;
             background: linear-gradient(145deg, #f5deb3, #deb887);
             border-radius: 50% 50% 45% 45%;
             box-shadow:
@@ -734,16 +734,16 @@
         /* 耳 */
         .ai-ears {
             position: absolute;
-            top: -8px;
+            top: -12px;
             width: 100%;
             display: flex;
             justify-content: space-between;
-            padding: 0 2px;
+            padding: 0 3px;
         }
 
         .ai-ear {
-            width: 14px;
-            height: 20px;
+            width: 20px;
+            height: 28px;
             background: linear-gradient(145deg, #d2a679, #b8956e);
             border-radius: 50% 50% 40% 40%;
             transform: rotate(-15deg);
@@ -756,16 +756,16 @@
 
         .ai-eyes {
             position: absolute;
-            top: 14px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 14px;
+            gap: 20px;
         }
 
         .ai-eye {
-            width: 10px;
-            height: 10px;
+            width: 14px;
+            height: 14px;
             background: linear-gradient(145deg, #2a1810, #4a2820);
             border-radius: 50%;
             position: relative;
@@ -775,10 +775,10 @@
         .ai-eye::after {
             content: '';
             position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 4px;
-            height: 4px;
+            top: 3px;
+            left: 3px;
+            width: 5px;
+            height: 5px;
             background: rgba(255,255,255,0.9);
             border-radius: 50%;
         }
@@ -791,11 +791,11 @@
         /* 鼻 */
         .ai-nose {
             position: absolute;
-            bottom: 12px;
+            bottom: 18px;
             left: 50%;
             transform: translateX(-50%);
-            width: 10px;
-            height: 8px;
+            width: 14px;
+            height: 11px;
             background: linear-gradient(145deg, #3a2a2a, #2a1a1a);
             border-radius: 50% 50% 45% 45%;
             box-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -803,11 +803,11 @@
 
         .ai-mouth {
             position: absolute;
-            bottom: 5px;
+            bottom: 8px;
             left: 50%;
             transform: translateX(-50%);
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             border: 2px solid #8b6914;
             border-top: none;
             border-radius: 0 0 10px 10px;
@@ -816,19 +816,19 @@
         /* 舌 */
         .ai-tongue {
             position: absolute;
-            bottom: 2px;
+            bottom: 3px;
             left: 50%;
             transform: translateX(-50%);
-            width: 8px;
-            height: 6px;
+            width: 12px;
+            height: 10px;
             background: linear-gradient(180deg, #ff8888, #ff6666);
             border-radius: 0 0 50% 50%;
             animation: pant 1.5s ease-in-out infinite;
         }
 
         @keyframes pant {
-            0%, 100% { height: 6px; }
-            50% { height: 10px; }
+            0%, 100% { height: 10px; }
+            50% { height: 16px; }
         }
 
         .ai-cheeks {
