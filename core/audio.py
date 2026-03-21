@@ -13,8 +13,8 @@ from typing import Optional, Callable
 
 from config import Config
 
-# AI応答の音量レベル（0.5〜2.0、デフォルト2.0）
-_voice_volume: float = 2.0
+# AI応答の音量レベル（0.5〜2.0、デフォルト1.5）
+_voice_volume: float = 1.5
 
 
 def get_voice_volume() -> float:
