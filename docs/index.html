@@ -788,39 +788,73 @@
         let knownMessageIds = new Set();
         let isFirstLoad = true;
 
+        // 通知音用のAudioContext（グローバルで保持）
+        let notificationAudioContext = null;
+
+        // AudioContextを初期化・有効化
+        function initAudioContext() {
+            if (!notificationAudioContext) {
+                notificationAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // suspended状態の場合はresumeする
+            if (notificationAudioContext.state === 'suspended') {
+                notificationAudioContext.resume();
+            }
+        }
+
+        // ユーザーインタラクション時にAudioContextを有効化
+        document.addEventListener('touchstart', initAudioContext, { once: true });
+        document.addEventListener('click', initAudioContext, { once: true });
+
         // 通知音
         function playNotificationSound() {
             try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                // AudioContextが未初期化の場合は初期化
+                if (!notificationAudioContext) {
+                    notificationAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                oscillator.frequency.value = 880;
-                oscillator.type = 'sine';
-
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.5);
-
-                setTimeout(() => {
-                    const osc2 = audioContext.createOscillator();
-                    const gain2 = audioContext.createGain();
-                    osc2.connect(gain2);
-                    gain2.connect(audioContext.destination);
-                    osc2.frequency.value = 1320;
-                    osc2.type = 'sine';
-                    gain2.gain.setValueAtTime(0.2, audioContext.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    osc2.start(audioContext.currentTime);
-                    osc2.stop(audioContext.currentTime + 0.3);
-                }, 150);
+                // suspended状態の場合はresumeしてから再生
+                if (notificationAudioContext.state === 'suspended') {
+                    notificationAudioContext.resume().then(() => {
+                        _playNotificationBeep();
+                    });
+                } else {
+                    _playNotificationBeep();
+                }
             } catch (e) {
                 console.log('通知音の再生に失敗:', e);
             }
+        }
+
+        function _playNotificationBeep() {
+            const audioContext = notificationAudioContext;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = 880;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                osc2.frequency.value = 1320;
+                osc2.type = 'sine';
+                gain2.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.3);
+            }, 150);
         }
 
         // 画面切り替え
