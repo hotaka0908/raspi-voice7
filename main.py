@@ -97,7 +97,7 @@ button: Optional[object] = None
 is_recording = False
 audio_handler: Optional[AudioHandler] = None
 last_button_press_time: float = 0  # ダブルクリック検出用
-DOUBLE_CLICK_THRESHOLD = 0.5  # ダブルクリック判定時間（秒）
+DOUBLE_CLICK_THRESHOLD = 0.3  # ダブルクリック判定時間（秒）
 
 # ビデオ通話状態
 _signaling: Optional[FirebaseSignaling] = None
@@ -788,7 +788,6 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                             logger.info("音声メッセージ送信失敗")
                         client.needs_session_reset = True
                         # ボタンが離されるまで待つ（ダブルクリック誤判定を防止）
-                        last_button_press_time = 0
                         while button.is_pressed and running:
                             await asyncio.sleep(0.05)
                         await asyncio.sleep(0.2)

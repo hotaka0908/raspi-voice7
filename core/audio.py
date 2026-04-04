@@ -324,7 +324,7 @@ def generate_music_start_sound() -> Optional[bytes]:
     """音楽開始準備音を生成（レコードノイズ）"""
     try:
         sample_rate = 48000
-        duration = 2.0
+        duration = 4.0  # 2倍に延長
 
         num_samples = int(sample_rate * duration)
         t = np.linspace(0, duration, num_samples, False)
