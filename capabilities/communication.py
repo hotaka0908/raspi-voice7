@@ -508,10 +508,17 @@ class VoiceSend(Capability):
 
     @property
     def description(self) -> str:
-        return """スマホに音声メッセージを送る。以下の場面で使う：
+        return """スマホに音声メッセージを送る。
+
+【重要】このツールは「内容を聞かずに即座に呼び出す」こと。
+ユーザーが録音で直接メッセージを吹き込むため、テキストで内容を聞く必要はない。
+
+以下の場面で即座に呼び出す：
 - 「スマホにメッセージ送って」「スマホに連絡」
-- 「船橋にメッセージ送って」「船橋に連絡」
-- 「妻/夫に伝えて」（スマホを持っている相手への連絡）"""
+- 「船橋にメッセージ送って」「船橋に連絡」（船橋=スマホの持ち主）
+- 「妻/夫に伝えて」
+
+呼び出したら「どうぞ」とだけ言い、ユーザーの録音を待つ。"""
 
     @property
     def requires_confirmation(self) -> bool:
@@ -546,9 +553,11 @@ class VoiceSendPhoto(Capability):
 
     @property
     def description(self) -> str:
-        return """写真を撮ってスマホに送る。以下の場面で使う：
+        return """写真を撮ってスマホに送る。即座に呼び出すこと。
+
+以下の場面で即座に呼び出す：
 - 「スマホに写真を送って」「今見てるものをスマホに」
-- 「船橋に写真を送って」"""
+- 「船橋に写真を送って」（船橋=スマホの持ち主）"""
 
     @property
     def requires_confirmation(self) -> bool:
