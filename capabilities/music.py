@@ -27,7 +27,7 @@ def _ensure_loading_sound_exists() -> bool:
 
     try:
         from core.audio import generate_loading_sound
-        sound_data = generate_loading_sound(duration=4.0)  # 音楽再生時は4秒
+        sound_data = generate_loading_sound(repeat=2)  # 音楽再生時は2回繰り返し（4秒）
         if sound_data:
             # assetsディレクトリを作成
             _LOADING_SOUND_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +123,7 @@ def _play_youtube(query: str) -> bool:
             "--no-video",
             "--ytdl-format=bestaudio",
             "--volume=100",
+            "--af=loudnorm",  # 音量正規化（動画ごとの音量差を平準化）
             "--really-quiet",
         ]
 

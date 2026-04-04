@@ -320,14 +320,15 @@ def generate_reset_sound() -> Optional[bytes]:
         return None
 
 
-def generate_loading_sound(duration: float = 2.0) -> Optional[bytes]:
+def generate_loading_sound(repeat: int = 1) -> Optional[bytes]:
     """読み込み音を生成（柔らかい水滴サウンド・上昇）
 
     Args:
-        duration: 音の長さ（秒）。デフォルト2秒、音楽再生時は4秒推奨
+        repeat: 繰り返し回数。デフォルト1回（2秒）、音楽再生時は2回（4秒）
     """
     try:
         sample_rate = 48000
+        duration = 2.0  # 1回分は2秒
 
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
@@ -335,15 +336,14 @@ def generate_loading_sound(duration: float = 2.0) -> Optional[bytes]:
         # 複数の水滴を時間差で配置
         sound = np.zeros(samples)
 
-        # 水滴のタイミングと周波数（上昇感）- durationに応じてスケール
-        scale = duration / 2.0
+        # 水滴のタイミングと周波数（上昇感）
         drops = [
-            (0.0 * scale, 400, 1.0),
-            (0.3 * scale, 450, 0.8),
-            (0.6 * scale, 500, 0.7),
-            (0.9 * scale, 550, 0.6),
-            (1.2 * scale, 600, 0.5),
-            (1.5 * scale, 650, 0.45),
+            (0.0, 400, 1.0),
+            (0.3, 450, 0.8),
+            (0.6, 500, 0.7),
+            (0.9, 550, 0.6),
+            (1.2, 600, 0.5),
+            (1.5, 650, 0.45),
         ]
 
         for start_time, base_freq, amplitude in drops:
@@ -354,6 +354,10 @@ def generate_loading_sound(duration: float = 2.0) -> Optional[bytes]:
 
         # 音量調整（控えめ）
         sound = (sound * 0.25 * 32767).astype(np.int16)
+
+        # 繰り返し
+        if repeat > 1:
+            sound = np.tile(sound, repeat)
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, 'wb') as wf:
