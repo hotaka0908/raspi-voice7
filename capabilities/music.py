@@ -27,7 +27,7 @@ def _ensure_loading_sound_exists() -> bool:
 
     try:
         from core.audio import generate_loading_sound
-        sound_data = generate_loading_sound()
+        sound_data = generate_loading_sound(duration=4.0)  # 音楽再生時は4秒
         if sound_data:
             # assetsディレクトリを作成
             _LOADING_SOUND_PATH.parent.mkdir(parents=True, exist_ok=True)

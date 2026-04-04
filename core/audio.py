@@ -320,63 +320,14 @@ def generate_reset_sound() -> Optional[bytes]:
         return None
 
 
-def generate_music_start_sound() -> Optional[bytes]:
-    """音楽開始準備音を生成（レコードノイズ）"""
+def generate_loading_sound(duration: float = 2.0) -> Optional[bytes]:
+    """読み込み音を生成（柔らかい水滴サウンド・上昇）
+
+    Args:
+        duration: 音の長さ（秒）。デフォルト2秒、音楽再生時は4秒推奨
+    """
     try:
         sample_rate = 48000
-        duration = 4.0  # 2倍に延長
-
-        num_samples = int(sample_rate * duration)
-        t = np.linspace(0, duration, num_samples, False)
-
-        # ベースのヒスノイズ（ブラウンノイズ風 = 低周波寄り）
-        white = np.random.uniform(-1, 1, num_samples)
-        # 簡易ローパスフィルタで温かみを出す
-        brown = np.zeros(num_samples)
-        brown[0] = white[0]
-        for i in range(1, num_samples):
-            brown[i] = brown[i-1] * 0.98 + white[i] * 0.02
-        brown = brown / np.max(np.abs(brown)) * 0.3
-
-        # ランダムなパチパチ音（クリック）
-        clicks = np.zeros(num_samples)
-        num_clicks = np.random.randint(8, 15)
-        for _ in range(num_clicks):
-            pos = np.random.randint(0, num_samples)
-            intensity = np.random.uniform(0.1, 0.4)
-            click_len = np.random.randint(20, 80)
-            end_pos = min(pos + click_len, num_samples)
-            click_env = np.exp(-np.arange(end_pos - pos) / 10)
-            clicks[pos:end_pos] += intensity * click_env * np.random.choice([-1, 1])
-
-        # 合成
-        sound = brown + clicks
-
-        # フェードイン・フェードアウト
-        fade_in = np.minimum(t / 0.3, 1)
-        fade_out = np.minimum((duration - t) / 0.5, 1)
-        sound = sound * fade_in * fade_out
-
-        # 音量調整
-        sound = (sound * 0.25 * 32767).astype(np.int16)
-
-        wav_buffer = io.BytesIO()
-        with wave.open(wav_buffer, 'wb') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(sample_rate)
-            wf.writeframes(sound.tobytes())
-
-        return wav_buffer.getvalue()
-    except Exception:
-        return None
-
-
-def generate_loading_sound() -> Optional[bytes]:
-    """読み込み音を生成（柔らかい水滴サウンド・上昇、約2秒）"""
-    try:
-        sample_rate = 48000
-        duration = 2.0
 
         samples = int(sample_rate * duration)
         t = np.linspace(0, duration, samples, False)
@@ -384,14 +335,15 @@ def generate_loading_sound() -> Optional[bytes]:
         # 複数の水滴を時間差で配置
         sound = np.zeros(samples)
 
-        # 水滴のタイミングと周波数（上昇感）
+        # 水滴のタイミングと周波数（上昇感）- durationに応じてスケール
+        scale = duration / 2.0
         drops = [
-            (0.0, 400, 1.0),
-            (0.3, 450, 0.8),
-            (0.6, 500, 0.7),
-            (0.9, 550, 0.6),
-            (1.2, 600, 0.5),
-            (1.5, 650, 0.45),
+            (0.0 * scale, 400, 1.0),
+            (0.3 * scale, 450, 0.8),
+            (0.6 * scale, 500, 0.7),
+            (0.9 * scale, 550, 0.6),
+            (1.2 * scale, 600, 0.5),
+            (1.5 * scale, 650, 0.45),
         ]
 
         for start_time, base_freq, amplitude in drops:
