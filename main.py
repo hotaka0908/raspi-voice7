@@ -635,18 +635,20 @@ def transcribe_audio(wav_data: bytes) -> Optional[str]:
 def record_voice_message() -> Optional[io.BytesIO]:
     """音声メッセージを録音"""
     global running, button, audio_handler
+    from core.audio import resample_audio
 
     if not audio_handler:
         return None
 
-    # 音声メッセージ用のサンプルレート（スマホ互換性のため24kHz）
-    voice_msg_sample_rate = Config.RECEIVE_SAMPLE_RATE  # 24kHz
+    # マイクは48kHzでのみ動作するため、48kHzで録音してから24kHzにリサンプリング
+    input_sample_rate = Config.INPUT_SAMPLE_RATE  # 48kHz
+    output_sample_rate = Config.RECEIVE_SAMPLE_RATE  # 24kHz
 
     try:
         stream = audio_handler.audio.open(
             format=8,  # paInt16
             channels=Config.CHANNELS,
-            rate=voice_msg_sample_rate,
+            rate=input_sample_rate,
             input=True,
             input_device_index=Config.INPUT_DEVICE_INDEX,
             frames_per_buffer=Config.CHUNK_SIZE
@@ -683,12 +685,16 @@ def record_voice_message() -> Optional[io.BytesIO]:
     if len(frames) < 5:
         return None
 
+    # 48kHzから24kHzにリサンプリング
+    raw_audio = b''.join(frames)
+    resampled_audio = resample_audio(raw_audio, input_sample_rate, output_sample_rate)
+
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
         wf.setnchannels(Config.CHANNELS)
         wf.setsampwidth(2)
-        wf.setframerate(voice_msg_sample_rate)
-        wf.writeframes(b''.join(frames))
+        wf.setframerate(output_sample_rate)
+        wf.writeframes(resampled_audio)
 
     wav_buffer.seek(0)
     return wav_buffer
@@ -781,6 +787,11 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         else:
                             logger.info("音声メッセージ送信失敗")
                         client.needs_session_reset = True
+                        # ボタンが離されるまで待つ（ダブルクリック誤判定を防止）
+                        last_button_press_time = 0
+                        while button.is_pressed and running:
+                            await asyncio.sleep(0.05)
+                        await asyncio.sleep(0.2)
                         continue
                     else:
                         client.last_response_time = None
