@@ -510,6 +510,7 @@ class VoiceSend(Capability):
     def description(self) -> str:
         return """スマホに音声メッセージを送る。以下の場面で使う：
 - 「スマホにメッセージ送って」「スマホに連絡」
+- 「船橋にメッセージ送って」「船橋に連絡」
 - 「妻/夫に伝えて」（スマホを持っている相手への連絡）"""
 
     @property
@@ -546,7 +547,8 @@ class VoiceSendPhoto(Capability):
     @property
     def description(self) -> str:
         return """写真を撮ってスマホに送る。以下の場面で使う：
-- 「スマホに写真を送って」「今見てるものをスマホに」"""
+- 「スマホに写真を送って」「今見てるものをスマホに」
+- 「船橋に写真を送って」"""
 
     @property
     def requires_confirmation(self) -> bool:
