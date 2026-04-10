@@ -50,6 +50,7 @@ from .profile import (
     get_profile_from_firebase
 )
 from .volume import VOLUME_CAPABILITIES
+from .amazon_order import AMAZON_CAPABILITIES, setup_amazon_login
 
 __all__ = [
     'Capability',
@@ -102,4 +103,6 @@ __all__ = [
     'generate_user_profile',
     'get_profile_from_firebase',
     'VOLUME_CAPABILITIES',
+    'AMAZON_CAPABILITIES',
+    'setup_amazon_login',
 ]
