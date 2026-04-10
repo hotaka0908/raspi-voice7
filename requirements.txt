@@ -31,6 +31,3 @@ aiohttp
 
 # Music playback (YouTube)
 yt-dlp
-
-# Browser automation (Amazon order)
-playwright

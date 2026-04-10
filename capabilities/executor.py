@@ -18,7 +18,6 @@ from .detail_info import DETAIL_INFO_CAPABILITIES
 from .music import MUSIC_CAPABILITIES
 from .profile import PROFILE_CAPABILITIES
 from .volume import VOLUME_CAPABILITIES
-from .amazon_order import AMAZON_CAPABILITIES
 
 
 class CapabilityExecutor:
@@ -41,8 +40,7 @@ class CapabilityExecutor:
             DETAIL_INFO_CAPABILITIES +
             MUSIC_CAPABILITIES +
             PROFILE_CAPABILITIES +
-            VOLUME_CAPABILITIES +
-            AMAZON_CAPABILITIES
+            VOLUME_CAPABILITIES
         )
         for cap in all_capabilities:
             self._capabilities[cap.name] = cap
