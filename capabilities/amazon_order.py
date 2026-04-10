@@ -96,10 +96,8 @@ async def _save_cookies():
 
 
 async def _check_login_status(page) -> bool:
-    """ログイン状態を確認"""
+    """現在のページでログイン状態を確認"""
     try:
-        await page.goto('https://www.amazon.co.jp', timeout=30000)
-        # アカウント名が表示されていればログイン済み
         account_element = await page.query_selector('#nav-link-accountList-nav-line-1')
         if account_element:
             text = await account_element.inner_text()
@@ -115,15 +113,15 @@ async def _search_products(query: str) -> list:
 
     page = await _get_browser()
 
+    # 検索ページに直接移動（日本語をURLエンコード）
+    encoded_query = quote(query)
+    search_url = f'https://www.amazon.co.jp/s?k={encoded_query}'
+    await page.goto(search_url, timeout=60000)
+
     # ログイン状態確認
     is_logged_in = await _check_login_status(page)
     if not is_logged_in:
         return []
-
-    # 検索（日本語をURLエンコード）
-    encoded_query = quote(query)
-    search_url = f'https://www.amazon.co.jp/s?k={encoded_query}'
-    await page.goto(search_url, timeout=30000)
 
     # 検索結果を取得（上位5件）
     results = []
@@ -132,7 +130,7 @@ async def _search_products(query: str) -> list:
     for i, item in enumerate(items[:5]):
         try:
             # 商品名
-            title_elem = await item.query_selector('h2 a span')
+            title_elem = await item.query_selector('h2 span')
             title = await title_elem.inner_text() if title_elem else "不明"
 
             # 価格
