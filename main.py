@@ -35,6 +35,7 @@ from core import (
 from capabilities import (
     init_gmail,
     init_firebase,
+    start_firebase_listening,
     init_calendar,
     get_firebase_messenger,
     load_alarms,
@@ -866,6 +867,10 @@ async def main_async():
         start_callback=audio_handler.start_output_stream,
         play_callback=audio_handler.play_audio_buffer
     )
+
+    # Firebaseメッセージ監視開始（audio_handler初期化後）
+    if start_firebase_listening():
+        logger.info("Firebaseメッセージ監視を開始しました")
 
     client = OpenAIRealtimeClient(audio_handler)
     receive_task = None

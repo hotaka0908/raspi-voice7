@@ -84,7 +84,7 @@ def init_gmail() -> bool:
 
 
 def init_firebase(on_message_callback=None) -> bool:
-    """Firebase初期化"""
+    """Firebase初期化（リスニングは開始しない）"""
     global _firebase_messenger
 
     if not FIREBASE_AVAILABLE:
@@ -95,6 +95,20 @@ def init_firebase(on_message_callback=None) -> bool:
             device_id="raspi",
             on_message_received=on_message_callback
         )
+        # start_listening は audio_handler 初期化後に呼び出す
+        return True
+    except Exception:
+        return False
+
+
+def start_firebase_listening() -> bool:
+    """Firebaseメッセージ監視を開始（audio_handler初期化後に呼び出す）"""
+    global _firebase_messenger
+
+    if not _firebase_messenger:
+        return False
+
+    try:
         _firebase_messenger.start_listening(poll_interval=1.5)
         return True
     except Exception:

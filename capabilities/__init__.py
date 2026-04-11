@@ -14,7 +14,7 @@ from .vision import (
 )
 from .communication import (
     COMMUNICATION_CAPABILITIES,
-    init_gmail, init_firebase, get_firebase_messenger
+    init_gmail, init_firebase, start_firebase_listening, get_firebase_messenger
 )
 from .schedule import (
     SCHEDULE_CAPABILITIES,
@@ -77,6 +77,7 @@ __all__ = [
     'set_vision_audio_callback',
     'init_gmail',
     'init_firebase',
+    'start_firebase_listening',
     'get_firebase_messenger',
     'load_alarms',
     'start_alarm_thread',

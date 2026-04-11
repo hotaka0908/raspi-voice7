@@ -227,13 +227,25 @@ class FirebaseVoiceMessenger:
         self.running = True
         self.processed_ids = set()
 
+        # 起動時刻を記録（この時刻より前のメッセージは処理しない）
+        startup_timestamp = int(time.time() * 1000)
+
         def poll_loop():
-            # 既存メッセージを記録
+            # 既存メッセージを記録（リトライ付き）
             logger.info("[POLLING] ポーリング開始、既存メッセージを記録中...")
-            messages = self.get_messages(limit=20)
-            for msg in messages:
-                self.processed_ids.add(msg.get("id"))
-            logger.info(f"[POLLING] 既存メッセージ {len(self.processed_ids)} 件を記録")
+            max_retries = 3
+            for attempt in range(max_retries):
+                messages = self.get_messages(limit=20)
+                if messages:
+                    for msg in messages:
+                        self.processed_ids.add(msg.get("id"))
+                    logger.info(f"[POLLING] 既存メッセージ {len(self.processed_ids)} 件を記録")
+                    break
+                elif attempt < max_retries - 1:
+                    logger.warning(f"[POLLING] 既存メッセージ取得失敗、リトライ {attempt + 1}/{max_retries}")
+                    time.sleep(2)
+                else:
+                    logger.warning("[POLLING] 既存メッセージ取得失敗、起動時刻ベースでフィルタリング")
 
             poll_count = 0
             while self.running:
@@ -259,6 +271,13 @@ class FirebaseVoiceMessenger:
                         msg_id = msg.get("id")
 
                         if msg_id in self.processed_ids:
+                            continue
+
+                        # 起動時刻より前のメッセージはスキップ（フォールバック）
+                        msg_timestamp = msg.get("timestamp", 0)
+                        if msg_timestamp < startup_timestamp:
+                            logger.debug(f"[POLLING] 起動前メッセージをスキップ: id={msg_id}")
+                            self.processed_ids.add(msg_id)
                             continue
 
                         logger.info(f"[POLLING] メッセージ処理開始: id={msg_id}, from={msg.get('from')}")
