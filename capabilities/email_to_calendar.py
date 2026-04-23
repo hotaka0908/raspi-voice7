@@ -122,8 +122,8 @@ def _get_travel_time(destination: str, mode: str = "driving") -> Optional[int]:
         return None
 
 
-def _set_alarm(time_str: str, label: str, message: str) -> bool:
-    """アラームをセット"""
+def _set_alarm(date_str: str, time_str: str, label: str, message: str) -> bool:
+    """アラームをセット（日付付き）"""
     try:
         from .schedule import _alarms, _alarm_next_id, save_alarms
         import capabilities.schedule as schedule_module
@@ -131,6 +131,7 @@ def _set_alarm(time_str: str, label: str, message: str) -> bool:
         alarm = {
             "id": schedule_module._alarm_next_id,
             "time": time_str,
+            "date": date_str,
             "label": label,
             "message": message,
             "enabled": True,
@@ -141,7 +142,7 @@ def _set_alarm(time_str: str, label: str, message: str) -> bool:
         schedule_module._alarm_next_id += 1
         save_alarms()
 
-        logger.info(f"アラームをセット: {time_str} - {label}")
+        logger.info(f"アラームをセット: {date_str} {time_str} - {label}")
         return True
 
     except Exception as e:
@@ -309,12 +310,13 @@ def _calculate_and_set_alarm(schedule: Dict[str, Any]) -> Optional[str]:
         logger.info("アラーム時刻が過去のためスキップ")
         return None
 
+    alarm_date_str = alarm_dt.strftime("%Y-%m-%d")
     alarm_time_str = alarm_dt.strftime("%H:%M")
     alarm_label = f"{title}の準備"
     alarm_message = f"{title}の時間です。{location}まで約{travel_minutes}分かかります。"
 
-    if _set_alarm(alarm_time_str, alarm_label, alarm_message):
-        return alarm_time_str
+    if _set_alarm(alarm_date_str, alarm_time_str, alarm_label, alarm_message):
+        return f"{alarm_date_str} {alarm_time_str}"
 
     return None
 

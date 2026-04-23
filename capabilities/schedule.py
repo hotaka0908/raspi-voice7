@@ -75,6 +75,7 @@ def _alarm_check_loop() -> None:
         try:
             now = datetime.now()
             current_time = now.strftime("%H:%M")
+            current_date = now.strftime("%Y-%m-%d")
             alarms_to_delete = []
 
             for alarm in _alarms:
@@ -83,10 +84,15 @@ def _alarm_check_loop() -> None:
 
                 alarm_id = alarm['id']
                 alarm_time = alarm['time']
+                alarm_date = alarm.get('date')  # 日付がある場合
 
                 # 同じ分に複数回鳴らないように
-                trigger_key = f"{alarm_id}_{current_time}"
+                trigger_key = f"{alarm_id}_{current_date}_{current_time}"
                 if trigger_key in last_triggered:
+                    continue
+
+                # 日付がある場合は日付もチェック
+                if alarm_date and alarm_date != current_date:
                     continue
 
                 if alarm_time == current_time:
@@ -152,6 +158,10 @@ class AlarmSet(Capability):
                     "type": "string",
                     "description": "時刻（HH:MM形式、例: 07:00, 14:30）"
                 },
+                "date": {
+                    "type": "string",
+                    "description": "日付（YYYY-MM-DD形式、省略時は今日）"
+                },
                 "label": {
                     "type": "string",
                     "description": "ラベル（例: 起床、会議）"
@@ -164,7 +174,7 @@ class AlarmSet(Capability):
             "required": ["time"]
         }
 
-    def execute(self, time: str, label: str = "アラーム",
+    def execute(self, time: str, date: str = None, label: str = "アラーム",
                 message: str = "") -> CapabilityResult:
         global _alarms, _alarm_next_id
 
@@ -175,9 +185,14 @@ class AlarmSet(Capability):
         except Exception:
             return CapabilityResult.fail("時刻が正しくありません")
 
+        # 日付が指定されていない場合は今日
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+
         alarm = {
             "id": _alarm_next_id,
             "time": time,
+            "date": date,
             "label": label,
             "message": message or f"{label}の時間です",
             "enabled": True,
@@ -188,7 +203,7 @@ class AlarmSet(Capability):
         _alarm_next_id += 1
         save_alarms()
 
-        return CapabilityResult.ok(f"{time}に覚えておきます")
+        return CapabilityResult.ok(f"{date} {time}に覚えておきます")
 
 
 class AlarmList(Capability):
@@ -218,7 +233,11 @@ class AlarmList(Capability):
         items = []
         for alarm in _alarms:
             status = "有効" if alarm.get("enabled", True) else "無効"
-            items.append(f"{alarm['id']}. {alarm['time']} - {alarm['label']} ({status})")
+            date_str = alarm.get('date', '')
+            if date_str:
+                items.append(f"{alarm['id']}. {date_str} {alarm['time']} - {alarm['label']} ({status})")
+            else:
+                items.append(f"{alarm['id']}. {alarm['time']} - {alarm['label']} ({status})")
 
         return CapabilityResult.ok("覚えていること:\n" + "\n".join(items))
 
