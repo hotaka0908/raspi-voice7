@@ -85,6 +85,86 @@ def _analyze_lifelog_photo(photo_data: bytes) -> str:
         return ""
 
 
+def _generate_daily_summary(date: str) -> Optional[str]:
+    """その日のライフログからAIでサマリーを生成"""
+    global _firebase_messenger
+    if not _firebase_messenger:
+        return None
+
+    try:
+        # その日のすべてのライフログを取得
+        entries = _firebase_messenger.get_lifelogs_for_date(date)
+        if not entries:
+            return None
+
+        # 分析結果と位置情報を集める
+        activities = []
+        for entry in entries:
+            time_str = entry.get("time", "")
+            analysis = entry.get("analysis", "").strip()
+            location = entry.get("location", {})
+
+            if analysis:
+                activity_info = f"{time_str}: {analysis}"
+                if location and location.get("latitude"):
+                    activity_info += f" (位置情報あり)"
+                activities.append(activity_info)
+
+        if not activities:
+            return None
+
+        # AIでサマリーを生成
+        client = get_openai_client()
+        activities_text = "\n".join(activities)
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "あなたはライフログのサマリーを生成するアシスタントです。"
+                },
+                {
+                    "role": "user",
+                    "content": f"""以下は今日の活動記録です。これを読んで、今日何をしたかを20文字以内の短いタイトルで要約してください。
+
+活動記録:
+{activities_text}
+
+要約のルール:
+- 20文字以内で簡潔に
+- 主な活動や場所を含める
+- 例: 「公園で読書と散歩」「カフェで仕事」「街を散策」"""
+                }
+            ],
+            max_tokens=50
+        )
+
+        summary = response.choices[0].message.content.strip()
+        # 引用符があれば削除
+        summary = summary.strip('"\'「」')
+        return summary
+
+    except Exception:
+        return None
+
+
+def _update_daily_summary_async(date: str) -> None:
+    """非同期でその日のサマリーを更新"""
+    global _firebase_messenger
+
+    def update():
+        try:
+            summary = _generate_daily_summary(date)
+            if summary and _firebase_messenger:
+                _firebase_messenger.save_lifelog_summary(date, summary)
+        except Exception:
+            pass
+
+    # 別スレッドで実行（メインの撮影処理をブロックしない）
+    threading.Thread(target=update, daemon=True).start()
+
+
 def stop_lifelog_thread() -> None:
     """ライフログスレッドを停止"""
     global _running
@@ -317,6 +397,11 @@ class LifelogStop(Capability):
             return CapabilityResult.ok("記録していませんでした")
 
         _lifelog_enabled = False
+
+        # 停止時に今日のサマリーを生成
+        today = datetime.now().strftime("%Y-%m-%d")
+        _update_daily_summary_async(today)
+
         return CapabilityResult.ok("記録を止めました")
 
 

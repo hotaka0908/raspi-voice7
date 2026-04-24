@@ -170,6 +170,58 @@ class FirebaseVoiceMessenger:
         response = requests.put(db_url, json=doc_data, timeout=10)
         return True
 
+    def get_lifelogs_for_date(self, date: str) -> List[Dict]:
+        """指定日のライフログエントリを取得
+
+        Args:
+            date: 日付 (YYYY-MM-DD)
+
+        Returns:
+            ライフログエントリのリスト（時刻順）
+        """
+        db_url = f"{self.db_url}/lifelogs/{date}.json"
+        try:
+            response = requests.get(db_url, timeout=10)
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            if not data:
+                return []
+
+            entries = []
+            for time_str, entry in data.items():
+                if isinstance(entry, dict):
+                    entry["time_key"] = time_str
+                    entries.append(entry)
+
+            # 時刻でソート
+            entries.sort(key=lambda x: x.get("time_key", ""))
+            return entries
+        except Exception:
+            return []
+
+    def save_lifelog_summary(self, date: str, summary: str) -> bool:
+        """日のサマリーをFirebaseに保存
+
+        Args:
+            date: 日付 (YYYY-MM-DD)
+            summary: AIが生成したサマリー
+
+        Returns:
+            成功時True
+        """
+        db_url = f"{self.db_url}/lifelogs_summary/{date}.json"
+        summary_data = {
+            "summary": summary,
+            "updatedAt": int(time.time() * 1000)
+        }
+        try:
+            response = requests.put(db_url, json=summary_data, timeout=10)
+            return response.status_code == 200
+        except Exception:
+            return False
+
     def get_messages(self, limit: int = 10, unplayed_only: bool = False) -> List[Dict]:
         """メッセージ一覧を取得"""
         db_url = f"{self.db_url}/messages.json"
