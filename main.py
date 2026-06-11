@@ -108,6 +108,7 @@ _pending_incoming_call: Optional[dict] = None
 standby_mode = False
 last_interaction_time: float = time.time()
 _pending_notifications: List[str] = []
+_wake_ready_pending = False  # スタンバイ復帰完了時に準備完了音を鳴らす
 
 
 def notify_firebase_activity() -> None:
@@ -124,10 +125,11 @@ def notify_firebase_activity() -> None:
 
 def wake_from_standby(reason: str = "") -> None:
     """スタンバイ解除（メインループが再接続する）"""
-    global standby_mode, last_interaction_time
+    global standby_mode, last_interaction_time, _wake_ready_pending
     if standby_mode:
         logger.info(f"スタンバイ解除: {reason}")
         standby_mode = False
+        _wake_ready_pending = True
     last_interaction_time = time.time()
     notify_firebase_activity()
 _openai_client: Optional[OpenAIRealtimeClient] = None
@@ -808,7 +810,15 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         await asyncio.sleep(0.5)
                         continue
 
-                    if client.needs_session_reset or not client.is_connected:
+                    if not client.is_connected:
+                        # スタンバイ復帰・再接続中: 押しっぱなしを次の周回で
+                        # ダブルクリックと誤判定しないよう、離されるまで待つ。
+                        # 接続完了は準備完了音で通知される
+                        while button.is_pressed and running:
+                            await asyncio.sleep(0.05)
+                        continue
+
+                    if client.needs_session_reset:
                         await asyncio.sleep(0.1)
                         continue
 
@@ -886,7 +896,8 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
 
 async def main_async():
     """非同期メインループ"""
-    global running, button, audio_handler, standby_mode, last_interaction_time
+    global running, button, audio_handler, standby_mode, last_interaction_time, \
+        _wake_ready_pending
 
     # ビデオ通話初期化（正しいイベントループで）
     loop = asyncio.get_running_loop()
@@ -1034,6 +1045,13 @@ async def main_async():
 
                 # 接続直後に即スタンバイへ落ちないように基準時刻を更新
                 last_interaction_time = time.time()
+
+                # スタンバイ復帰完了の合図（準備完了音）
+                if _wake_ready_pending:
+                    _wake_ready_pending = False
+                    ready_sound = generate_reset_sound()
+                    if ready_sound:
+                        audio_handler.play_audio_buffer(ready_sound)
 
                 # スタンバイ中に保留されたアラーム等の通知を送信
                 while _pending_notifications:
