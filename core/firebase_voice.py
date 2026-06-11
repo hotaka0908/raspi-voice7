@@ -8,6 +8,7 @@ REST API経由でアクセス（サービスアカウント不要）
 """
 
 import os
+import re
 import time
 import logging
 import requests
@@ -107,8 +108,8 @@ class FirebaseVoiceMessenger:
                                     params=firebase_auth.db_auth_params(),
                                     timeout=timeout)
         except requests.exceptions.RequestException as e:
-            # 例外文字列には認証トークン付きURLが含まれるため除去してログ
-            err = str(e).split("?auth=")[0]
+            # 認証トークンだけマスクし、根本原因（Caused by等）は残してログ
+            err = re.sub(r"\?auth=[^\s)\"']+", "?auth=***", str(e))
             logger.error(f"Firebase DBリクエストエラー ({method} {path}): {err}")
             return None
 

@@ -368,10 +368,12 @@ async def _handle_ice_candidate(candidate: dict) -> None:
 
 def on_call_ended(session_id: str) -> None:
     """通話終了コールバック"""
-    global _pending_incoming_call
+    global _pending_incoming_call, last_interaction_time
 
     logger.info(f"通話終了検出: {session_id}")
     _pending_incoming_call = None
+    # 長時間の通話直後に即スタンバイへ落ちないように基準時刻を更新
+    last_interaction_time = time.time()
 
     try:
         if _main_loop is None:
@@ -936,13 +938,12 @@ async def main_async():
                 )
             except Exception as e:
                 logger.error(f"アラーム通知エラー: {e}")
-        elif standby_mode:
-            # スタンバイ中は復帰させて、再接続後に送信する
-            logger.info("スタンバイ中のためアラーム通知を保留して復帰します")
-            _pending_notifications.append(message)
-            wake_from_standby("アラーム通知")
         else:
-            logger.warning(f"未接続のためアラーム通知をスキップ: {message}")
+            # 未接続時（スタンバイ・再接続中）は保留し、再接続後に送信する
+            logger.info("未接続のためアラーム通知を保留します")
+            _pending_notifications.append(message)
+            if standby_mode:
+                wake_from_standby("アラーム通知")
 
     set_alarm_notify_callback(alarm_notify)
     start_alarm_thread()
@@ -958,12 +959,12 @@ async def main_async():
                 )
             except Exception as e:
                 logger.error(f"リマインダー通知エラー: {e}")
-        elif standby_mode:
-            logger.info("スタンバイ中のためリマインダー通知を保留して復帰します")
-            _pending_notifications.append(message)
-            wake_from_standby("リマインダー通知")
         else:
-            logger.warning(f"未接続のためリマインダー通知をスキップ: {message}")
+            # 未接続時（スタンバイ・再接続中）は保留し、再接続後に送信する
+            logger.info("未接続のためリマインダー通知を保留します")
+            _pending_notifications.append(message)
+            if standby_mode:
+                wake_from_standby("リマインダー通知")
 
     set_reminder_notify_callback(reminder_notify)
     start_reminder_thread()
@@ -991,10 +992,13 @@ async def main_async():
                     last_interaction_time = ts
 
             # 節電: 一定時間操作がなければOpenAI接続をスタンバイ
+            # （応答中・録音中・音声メッセージ・ビデオ通話・音楽再生中は対象外）
             if (client.is_connected and not standby_mode
                     and not client.is_responding
+                    and not is_recording
                     and not client.voice_message_mode
                     and not is_in_videocall()
+                    and not is_music_active()
                     and time.time() - last_interaction_time >= Config.IDLE_DISCONNECT_TIMEOUT):
                 logger.info(f"--- {Config.IDLE_DISCONNECT_TIMEOUT // 60}分間操作がないため"
                             "OpenAI接続をスタンバイ（ボタンで復帰） ---")

@@ -6,6 +6,7 @@ Firebase Realtime Database を使用してSDP/ICE候補を交換
 """
 
 import os
+import re
 import time
 import threading
 import logging
@@ -47,16 +48,16 @@ class FirebaseSignaling:
         self.current_session_id: Optional[str] = None
         self._last_activity = time.time()
 
-    def notify_activity(self) -> None:
-        """ユーザー操作などの活動を通知し、ポーリングを高速側に戻す"""
-        self._last_activity = time.time()
-
         # コールバック
         self.on_incoming_call: Optional[Callable[[str, Dict], None]] = None
         self.on_offer_received: Optional[Callable[[str, Dict], None]] = None
         self.on_answer_received: Optional[Callable[[str, Dict], None]] = None
         self.on_ice_candidate: Optional[Callable[[str, Dict], None]] = None
         self.on_call_ended: Optional[Callable[[str], None]] = None
+
+    def notify_activity(self) -> None:
+        """ユーザー操作などの活動を通知し、ポーリングを高速側に戻す"""
+        self._last_activity = time.time()
 
     def _db_request(self, method: str, path: str, payload=None,
                     timeout: float = 10) -> Optional[requests.Response]:
@@ -67,8 +68,8 @@ class FirebaseSignaling:
                                     params=firebase_auth.db_auth_params(),
                                     timeout=timeout)
         except requests.exceptions.RequestException as e:
-            # 例外文字列には認証トークン付きURLが含まれるため除去してログ
-            err = str(e).split("?auth=")[0]
+            # 認証トークンだけマスクし、根本原因（Caused by等）は残してログ
+            err = re.sub(r"\?auth=[^\s)\"']+", "?auth=***", str(e))
             logger.warning(f"シグナリングDBリクエストエラー ({method} {path}): {err}")
             return None
 
