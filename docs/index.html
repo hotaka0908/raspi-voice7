@@ -589,6 +589,13 @@
             text-shadow: 0 1px 3px rgba(0,0,0,0.5);
         }
 
+        .videocall-status-sub {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+
         /* 着信通知オーバーレイ */
         .incoming-call-overlay {
             position: fixed;
@@ -1453,10 +1460,15 @@
         }
 
         // ビデオ通話画面表示
-        function showVideoCall() {
+        // isOutgoing: 発信時はラズパイ側のポーリング検出待ち（アイドル時最大30秒）がある
+        function showVideoCall(isOutgoing = false) {
             videocallOverlay.classList.add('active');
             videocallStatus.style.display = 'block';
-            videocallStatus.textContent = '接続中...';
+            if (isOutgoing) {
+                videocallStatus.innerHTML = '呼び出し中...<span class="videocall-status-sub">ラズパイの応答を待っています（最大30秒）</span>';
+            } else {
+                videocallStatus.textContent = '接続中...';
+            }
             audioEnabled = true;
             toggleAudioBtn.classList.remove('off');
         }
@@ -1476,7 +1488,7 @@
             }
 
             try {
-                showVideoCall();
+                showVideoCall(true);
                 await videoCallManager.startCall();
             } catch (error) {
                 console.error('発信エラー:', error);
