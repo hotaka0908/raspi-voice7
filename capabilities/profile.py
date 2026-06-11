@@ -50,7 +50,7 @@ def get_lifelogs_from_firebase(days: int = 30) -> Dict[str, Any]:
             return filtered
         return {}
     except Exception as e:
-        logger.error(f"ライフログ取得エラー: {e}")
+        logger.error(f"ライフログ取得エラー: {firebase_auth.mask_auth_token(e)}")
         return {}
 
 
@@ -65,7 +65,7 @@ def save_profile_to_firebase(profile: Dict[str, Any]) -> bool:
                                 params=firebase_auth.db_auth_params(), timeout=10)
         return response.status_code == 200
     except Exception as e:
-        logger.error(f"プロファイル保存エラー: {e}")
+        logger.error(f"プロファイル保存エラー: {firebase_auth.mask_auth_token(e)}")
         return False
 
 
@@ -81,7 +81,7 @@ def get_profile_from_firebase() -> Optional[Dict[str, Any]]:
             return response.json()
         return None
     except Exception as e:
-        logger.error(f"プロファイル取得エラー: {e}")
+        logger.error(f"プロファイル取得エラー: {firebase_auth.mask_auth_token(e)}")
         return None
 
 

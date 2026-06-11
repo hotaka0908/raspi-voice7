@@ -10,6 +10,7 @@ FIREBASE_AUTH_EMAIL / FIREBASE_AUTH_PASSWORD が未設定の場合は無効
 """
 
 import os
+import re
 import time
 import logging
 import threading
@@ -112,3 +113,8 @@ def storage_auth_headers() -> Dict[str, str]:
     """Cloud Storage REST用の認証ヘッダー"""
     token = get_id_token()
     return {"Authorization": f"Firebase {token}"} if token else {}
+
+
+def mask_auth_token(text) -> str:
+    """ログ出力用: 例外メッセージ等のURLに含まれる認証トークンをマスクする"""
+    return re.sub(r"\?auth=[^\s)\"']+", "?auth=***", str(text))

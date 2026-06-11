@@ -201,7 +201,7 @@ class FirebaseLocationClient:
             )
 
         except Exception as e:
-            logger.error(f"位置情報取得エラー: {e}")
+            logger.error(f"位置情報取得エラー: {firebase_auth.mask_auth_token(e)}")
             return None
 
 
