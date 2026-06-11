@@ -39,6 +39,8 @@ load_dotenv(env_path)
 
 FIREBASE_DATABASE_URL = os.getenv("FIREBASE_DATABASE_URL", "")
 
+from core import firebase_auth
+
 # Vision機能
 try:
     from .vision import capture_image_raw, get_openai_client
@@ -173,7 +175,7 @@ class FirebaseLocationClient:
 
         try:
             url = f"{self.db_url}/user_location.json"
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, params=firebase_auth.db_auth_params(), timeout=10)
 
             if response.status_code != 200:
                 logger.warning(f"Firebase位置情報取得失敗: {response.status_code}")

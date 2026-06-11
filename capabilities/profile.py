@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from .base import Capability, CapabilityCategory, CapabilityResult
 from .vision import get_openai_client
 from config import Config
+from core import firebase_auth
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def get_lifelogs_from_firebase(days: int = 30) -> Dict[str, Any]:
 
     try:
         db_url = f"{FIREBASE_DATABASE_URL}/lifelogs.json"
-        response = requests.get(db_url, timeout=30)
+        response = requests.get(db_url, params=firebase_auth.db_auth_params(), timeout=30)
         if response.status_code == 200:
             all_data = response.json() or {}
 
@@ -60,7 +61,8 @@ def save_profile_to_firebase(profile: Dict[str, Any]) -> bool:
 
     try:
         db_url = f"{FIREBASE_DATABASE_URL}/user_profile.json"
-        response = requests.put(db_url, json=profile, timeout=10)
+        response = requests.put(db_url, json=profile,
+                                params=firebase_auth.db_auth_params(), timeout=10)
         return response.status_code == 200
     except Exception as e:
         logger.error(f"プロファイル保存エラー: {e}")
@@ -74,7 +76,7 @@ def get_profile_from_firebase() -> Optional[Dict[str, Any]]:
 
     try:
         db_url = f"{FIREBASE_DATABASE_URL}/user_profile.json"
-        response = requests.get(db_url, timeout=10)
+        response = requests.get(db_url, params=firebase_auth.db_auth_params(), timeout=10)
         if response.status_code == 200:
             return response.json()
         return None
@@ -369,7 +371,7 @@ class ProfileGenerate(Capability):
         profile = generate_user_profile(days)
 
         if "error" in profile:
-            return CapabilityResult.error(profile["error"])
+            return CapabilityResult.fail(profile["error"])
 
         summary = profile.get("personality", {}).get("summary", "分析完了")
         data_points = profile.get("dataPoints", 0)
@@ -403,7 +405,7 @@ class ProfileGet(Capability):
         profile = get_profile_from_firebase()
 
         if not profile:
-            return CapabilityResult.error("プロファイルがまだありません。「プロファイル生成して」と言ってください")
+            return CapabilityResult.fail("プロファイルがまだありません。「プロファイル生成して」と言ってください")
 
         # 主要情報を抽出
         personality = profile.get("personality", {})

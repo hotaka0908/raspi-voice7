@@ -45,6 +45,9 @@ class OpenAIRealtimeClient:
         self.voice_message_mode = False
         self.voice_message_timestamp = None
 
+        # 実行中ツールタスクの強参照（GCによるタスク消失防止）
+        self._tool_tasks = set()
+
         # 保留中のツール呼び出し
         self._pending_tool_calls = {}
         self._current_response_id = None
@@ -286,19 +289,12 @@ class OpenAIRealtimeClient:
 
             logger.info(f"[CAPABILITY] {name} {arguments}")
 
-            # 全てのツール実行を別スレッドで（イベントループをブロックしない）
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, lambda: self.executor.execute(name, arguments)
-            )
-
-            # voice_sendの場合は録音モードを有効化
-            if result.data and result.data.get("start_voice_recording"):
-                self.voice_message_mode = True
-                self.voice_message_timestamp = time.time()
-
-            # ツール結果を送信
-            await self.send_tool_response(call_id, result.message)
+            # ツール実行はバックグラウンドタスクで行う。
+            # ここでawaitすると長時間ツールの間、受信ループ
+            # （音声デルタ等のイベント処理）が完全に止まってしまう
+            task = asyncio.create_task(self._run_tool_call(call_id, name, arguments))
+            self._tool_tasks.add(task)
+            task.add_done_callback(self._tool_tasks.discard)
 
         # レスポンス完了
         elif event_type == "response.done":
@@ -325,13 +321,31 @@ class OpenAIRealtimeClient:
             # レート制限情報
             pass
 
+    async def _run_tool_call(self, call_id: str, name: str, arguments: Dict) -> None:
+        """ツールを別スレッドで実行し、結果を送信する"""
+        try:
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(
+                None, lambda: self.executor.execute(name, arguments)
+            )
+        except Exception as e:
+            logger.error(f"ツール実行エラー: {name}: {e}")
+            await self.send_tool_response(call_id, "今はできません")
+            return
+
+        # voice_sendの場合は録音モードを有効化
+        if result.data and result.data.get("start_voice_recording"):
+            self.voice_message_mode = True
+            self.voice_message_timestamp = time.time()
+
+        # ツール結果を送信
+        await self.send_tool_response(call_id, result.message)
+
     async def reset_session(self) -> bool:
         """セッションリセット"""
         await self.disconnect()
 
-        if not self.voice_message_mode:
-            self.voice_message_mode = False
-            self.voice_message_timestamp = None
+        # voice_message_mode は再接続をまたいで維持する
 
         try:
             await self.connect()
@@ -352,9 +366,7 @@ class OpenAIRealtimeClient:
         await self.disconnect()
         self.needs_reconnect = False
 
-        if not self.voice_message_mode:
-            self.voice_message_mode = False
-            self.voice_message_timestamp = None
+        # voice_message_mode は再接続をまたいで維持する
 
         try:
             await self.connect()

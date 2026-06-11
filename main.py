@@ -151,11 +151,16 @@ def start_videocall_from_raspi() -> bool:
         logger.warning("ビデオ通話が利用できません")
         return False
 
+    # ツール実行ワーカースレッドから呼ばれるため、get_event_loop()ではなく
+    # メインループの参照を使う
+    if _main_loop is None:
+        logger.warning("メインループが未初期化のため発信できません")
+        return False
+
     try:
-        loop = asyncio.get_event_loop()
         future = asyncio.run_coroutine_threadsafe(
             _start_outgoing_call(),
-            loop
+            _main_loop
         )
         return future.result(timeout=5)
     except Exception as e:
@@ -500,6 +505,7 @@ def convert_webm_to_wav(audio_data: bytes) -> Optional[bytes]:
         ], capture_output=True, timeout=30)
 
         if result.returncode != 0:
+            logger.error(f"ffmpeg変換失敗: {result.stderr.decode('utf-8', errors='replace')[:300]}")
             return None
 
         with open(wav_path, "rb") as f:
@@ -507,7 +513,8 @@ def convert_webm_to_wav(audio_data: bytes) -> Optional[bytes]:
 
         return wav_data
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"WebM→WAV変換エラー: {e}")
         return None
 
     finally:
@@ -629,7 +636,8 @@ def transcribe_audio(wav_data: bytes) -> Optional[str]:
         finally:
             os.unlink(temp_path)
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"文字起こしエラー: {e}")
         return None
 
 
@@ -720,9 +728,11 @@ def send_recorded_voice_message(client: OpenAIRealtimeClient) -> bool:
             logger.info("音声メッセージ送信完了")
             return True
         else:
+            logger.error("音声メッセージ送信失敗")
             return False
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"音声メッセージ送信エラー: {e}")
         return False
 
 
@@ -879,14 +889,16 @@ async def main_async():
 
     # アラーム通知コールバック
     def alarm_notify(message: str):
-        if client.is_connected:
+        if client.is_connected and client.loop:
             try:
                 asyncio.run_coroutine_threadsafe(
                     client.send_text_message(message),
                     client.loop
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"アラーム通知エラー: {e}")
+        else:
+            logger.warning(f"未接続のためアラーム通知をスキップ: {message}")
 
     set_alarm_notify_callback(alarm_notify)
     start_alarm_thread()
@@ -894,14 +906,16 @@ async def main_async():
 
     # プロアクティブリマインダー通知コールバック
     def reminder_notify(message: str):
-        if client.is_connected:
+        if client.is_connected and client.loop:
             try:
                 asyncio.run_coroutine_threadsafe(
                     client.send_text_message(message),
                     client.loop
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"リマインダー通知エラー: {e}")
+        else:
+            logger.warning(f"未接続のためリマインダー通知をスキップ: {message}")
 
     set_reminder_notify_callback(reminder_notify)
     start_reminder_thread()

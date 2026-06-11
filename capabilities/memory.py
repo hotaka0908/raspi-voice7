@@ -7,6 +7,7 @@
 """
 
 import base64
+import logging
 import os
 import subprocess
 import threading
@@ -21,6 +22,8 @@ from .base import Capability, CapabilityCategory, CapabilityResult
 from .vision import camera_lock, get_openai_client
 from .proactive_reminder import FirebaseLocationClient
 from config import Config
+
+logger = logging.getLogger("memory")
 
 
 # ライフログ状態管理
@@ -145,7 +148,8 @@ def _generate_daily_summary(date: str) -> Optional[str]:
         summary = summary.strip('"\'「」')
         return summary
 
-    except Exception:
+    except Exception as e:
+        logger.warning(f"デイリーサマリー生成失敗 ({date}): {e}")
         return None
 
 
@@ -158,8 +162,8 @@ def _update_daily_summary_async(date: str) -> None:
             summary = _generate_daily_summary(date)
             if summary and _firebase_messenger:
                 _firebase_messenger.save_lifelog_summary(date, summary)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"デイリーサマリー更新失敗 ({date}): {e}")
 
     # 別スレッドで実行（メインの撮影処理をブロックしない）
     threading.Thread(target=update, daemon=True).start()

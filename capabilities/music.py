@@ -273,6 +273,9 @@ def resume_music_after_conversation() -> bool:
             pass
 
     with _player_lock:
+        # ロック解放中に _kill_player 等でNoneにされている可能性があるため再チェック
+        if not _player_process or _player_process.poll() is not None:
+            return False
         try:
             os.kill(_player_process.pid, signal.SIGCONT)
             _is_paused = False

@@ -125,21 +125,22 @@ def _get_travel_time(destination: str, mode: str = "driving") -> Optional[int]:
 def _set_alarm(date_str: str, time_str: str, label: str, message: str) -> bool:
     """アラームをセット（日付付き）"""
     try:
-        from .schedule import _alarms, _alarm_next_id, save_alarms
         import capabilities.schedule as schedule_module
+        from .schedule import save_alarms
 
-        alarm = {
-            "id": schedule_module._alarm_next_id,
-            "time": time_str,
-            "date": date_str,
-            "label": label,
-            "message": message,
-            "enabled": True,
-            "created_at": datetime.now().isoformat()
-        }
+        with schedule_module._alarms_lock:
+            alarm = {
+                "id": schedule_module._alarm_next_id,
+                "time": time_str,
+                "date": date_str,
+                "label": label,
+                "message": message,
+                "enabled": True,
+                "created_at": datetime.now().isoformat()
+            }
 
-        schedule_module._alarms.append(alarm)
-        schedule_module._alarm_next_id += 1
+            schedule_module._alarms.append(alarm)
+            schedule_module._alarm_next_id += 1
         save_alarms()
 
         logger.info(f"アラームをセット: {date_str} {time_str} - {label}")
@@ -395,7 +396,7 @@ def _extract_schedule_from_reply(to: str, subject: str, reply_body: str,
 
 
 def check_and_add_schedule(to: str, subject: str, body: str,
-                           original_body: str = None) -> Optional[str]:
+                           original_body: Optional[str] = None) -> Optional[str]:
     """
     メール送信後に呼び出す。予定があればカレンダーに追加し、アラームもセット。
 

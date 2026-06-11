@@ -19,7 +19,10 @@ from config import Config
 
 
 # アラーム状態管理
+# _alarms はメインスレッド・アラーム監視スレッド・email_to_calendar から
+# 並行アクセスされるため、必ず _alarms_lock を取って操作する
 _alarms: List[Dict] = []
+_alarms_lock = threading.RLock()
 _alarm_next_id = 1
 _alarm_thread: Optional[threading.Thread] = None
 _alarm_notify_callback: Optional[Callable] = None
@@ -34,11 +37,13 @@ def load_alarms() -> None:
         if os.path.exists(Config.ALARM_FILE_PATH):
             with open(Config.ALARM_FILE_PATH, 'r') as f:
                 data = json.load(f)
+            with _alarms_lock:
                 _alarms = data.get('alarms', [])
                 _alarm_next_id = data.get('next_id', 1)
     except Exception:
-        _alarms = []
-        _alarm_next_id = 1
+        with _alarms_lock:
+            _alarms = []
+            _alarm_next_id = 1
 
 
 def save_alarms() -> None:
@@ -47,8 +52,10 @@ def save_alarms() -> None:
 
     try:
         os.makedirs(os.path.dirname(Config.ALARM_FILE_PATH), exist_ok=True)
+        with _alarms_lock:
+            payload = {'alarms': list(_alarms), 'next_id': _alarm_next_id}
         with open(Config.ALARM_FILE_PATH, 'w') as f:
-            json.dump({'alarms': _alarms, 'next_id': _alarm_next_id}, f, ensure_ascii=False)
+            json.dump(payload, f, ensure_ascii=False)
     except Exception:
         pass
 
@@ -78,7 +85,10 @@ def _alarm_check_loop() -> None:
             current_date = now.strftime("%Y-%m-%d")
             alarms_to_delete = []
 
-            for alarm in _alarms:
+            with _alarms_lock:
+                alarms_snapshot = list(_alarms)
+
+            for alarm in alarms_snapshot:
                 if not alarm.get("enabled", True):
                     continue
 
@@ -110,8 +120,8 @@ def _alarm_check_loop() -> None:
 
             # 発動したアラームを削除
             if alarms_to_delete:
-                for alarm_id in alarms_to_delete:
-                    _alarms[:] = [a for a in _alarms if a['id'] != alarm_id]
+                with _alarms_lock:
+                    _alarms[:] = [a for a in _alarms if a['id'] not in alarms_to_delete]
                 save_alarms()
 
             # 古い記録をクリア
@@ -174,7 +184,7 @@ class AlarmSet(Capability):
             "required": ["time"]
         }
 
-    def execute(self, time: str, date: str = None, label: str = "アラーム",
+    def execute(self, time: str, date: Optional[str] = None, label: str = "アラーム",
                 message: str = "") -> CapabilityResult:
         global _alarms, _alarm_next_id
 
@@ -189,18 +199,19 @@ class AlarmSet(Capability):
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
 
-        alarm = {
-            "id": _alarm_next_id,
-            "time": time,
-            "date": date,
-            "label": label,
-            "message": message or f"{label}の時間です",
-            "enabled": True,
-            "created_at": datetime.now().isoformat()
-        }
+        with _alarms_lock:
+            alarm = {
+                "id": _alarm_next_id,
+                "time": time,
+                "date": date,
+                "label": label,
+                "message": message or f"{label}の時間です",
+                "enabled": True,
+                "created_at": datetime.now().isoformat()
+            }
 
-        _alarms.append(alarm)
-        _alarm_next_id += 1
+            _alarms.append(alarm)
+            _alarm_next_id += 1
         save_alarms()
 
         return CapabilityResult.ok(f"{date} {time}に覚えておきます")
@@ -227,11 +238,14 @@ class AlarmList(Capability):
         return {"type": "object", "properties": {}}
 
     def execute(self) -> CapabilityResult:
-        if not _alarms:
+        with _alarms_lock:
+            alarms_snapshot = list(_alarms)
+
+        if not alarms_snapshot:
             return CapabilityResult.ok("覚えていることはありません")
 
         items = []
-        for alarm in _alarms:
+        for alarm in alarms_snapshot:
             status = "有効" if alarm.get("enabled", True) else "無効"
             date_str = alarm.get('date', '')
             if date_str:
@@ -278,11 +292,16 @@ class AlarmDelete(Capability):
         except Exception:
             return CapabilityResult.fail("番号を教えてください")
 
-        for i, alarm in enumerate(_alarms):
-            if alarm['id'] == alarm_id:
-                deleted = _alarms.pop(i)
-                save_alarms()
-                return CapabilityResult.ok(f"{deleted['time']}の予定を忘れました")
+        deleted = None
+        with _alarms_lock:
+            for i, alarm in enumerate(_alarms):
+                if alarm['id'] == alarm_id:
+                    deleted = _alarms.pop(i)
+                    break
+
+        if deleted:
+            save_alarms()
+            return CapabilityResult.ok(f"{deleted['time']}の予定を忘れました")
 
         return CapabilityResult.fail("その予定は見つかりません")
 

@@ -4,6 +4,7 @@ Capability実行エンジン
 ツール呼び出しを受けて適切なCapabilityを実行
 """
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from .base import Capability, CapabilityResult
@@ -18,6 +19,8 @@ from .detail_info import DETAIL_INFO_CAPABILITIES
 from .music import MUSIC_CAPABILITIES
 from .profile import PROFILE_CAPABILITIES
 from .volume import VOLUME_CAPABILITIES
+
+logger = logging.getLogger("executor")
 
 
 class CapabilityExecutor:
@@ -53,8 +56,10 @@ class CapabilityExecutor:
 
         try:
             return cap.execute(**arguments)
-        except Exception as e:
-            # 技術的なエラーは隠蔽
+        except Exception:
+            # ユーザー応答からは技術的なエラーを隠蔽するが、
+            # 障害解析のためログにはスタックトレースを残す
+            logger.exception(f"Capability実行エラー: {name} args={arguments}")
             return CapabilityResult.fail("今はできません")
 
     def get_capability(self, name: str) -> Optional[Capability]:

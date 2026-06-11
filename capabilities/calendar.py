@@ -7,11 +7,14 @@
 """
 
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from .base import Capability, CapabilityCategory, CapabilityResult
 from config import Config
+
+logger = logging.getLogger("calendar")
 
 # Google Calendar API
 try:
@@ -52,7 +55,11 @@ def init_calendar() -> bool:
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                logger.error(f"Calendarトークン更新失敗: {e}")
+                return False
         else:
             if not os.path.exists(Config.GMAIL_CREDENTIALS_PATH):
                 return False
@@ -105,7 +112,7 @@ def _format_event_time(event: Dict) -> str:
     start = event.get('start', {})
     if 'dateTime' in start:
         dt = datetime.fromisoformat(start['dateTime'].replace('Z', '+00:00'))
-        return dt.strftime("%H:%M")
+        return dt.astimezone().strftime("%H:%M")
     elif 'date' in start:
         return "終日"
     return ""
@@ -147,14 +154,16 @@ daysで何日分の予定を取得するか指定（デフォルト1日）"""
             return CapabilityResult.fail("今は予定を確認できません")
 
         try:
-            now = datetime.now()
+            # ローカル時刻(JST)に'Z'を付けるとUTC扱いで9時間ずれるため、
+            # タイムゾーン付きで渡す
+            now = datetime.now().astimezone()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_time = start_of_day + timedelta(days=days)
 
             events_result = _calendar_service.events().list(
                 calendarId='primary',
-                timeMin=start_of_day.isoformat() + 'Z',
-                timeMax=end_time.isoformat() + 'Z',
+                timeMin=start_of_day.isoformat(),
+                timeMax=end_time.isoformat(),
                 maxResults=10,
                 singleEvents=True,
                 orderBy='startTime'
@@ -176,7 +185,7 @@ daysで何日分の予定を取得するか指定（デフォルト1日）"""
                 start = event.get('start', {})
                 if 'dateTime' in start:
                     event_dt = datetime.fromisoformat(start['dateTime'].replace('Z', '+00:00'))
-                    event_date = event_dt.date()
+                    event_date = event_dt.astimezone().date()
                 elif 'date' in start:
                     event_date = datetime.fromisoformat(start['date']).date()
                 else:
@@ -352,14 +361,16 @@ titleで削除する予定のタイトル（部分一致）を指定"""
                 except:
                     base_date = now
 
-            start_of_day = base_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            # ローカル時刻(JST)に'Z'を付けるとUTC扱いで9時間ずれるため、
+            # タイムゾーン付きで渡す
+            start_of_day = base_date.astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
 
             # 予定を検索
             events_result = _calendar_service.events().list(
                 calendarId='primary',
-                timeMin=start_of_day.isoformat() + 'Z',
-                timeMax=end_of_day.isoformat() + 'Z',
+                timeMin=start_of_day.isoformat(),
+                timeMax=end_of_day.isoformat(),
                 singleEvents=True,
                 orderBy='startTime'
             ).execute()

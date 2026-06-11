@@ -20,12 +20,34 @@ function getOpenAI() {
 }
 
 /**
+ * Authorization: Bearer <IDトークン> を検証する。無効ならnull。
+ */
+async function verifyAuth(req) {
+  const match = (req.headers.authorization || "").match(/^Bearer (.+)$/);
+  if (!match) {
+    return null;
+  }
+  try {
+    return await admin.auth().verifyIdToken(match[1]);
+  } catch (error) {
+    console.warn("IDトークン検証失敗:", error.message);
+    return null;
+  }
+}
+
+/**
  * 詳細情報についての追加質問に回答する
  */
 exports.askAboutDetail = onRequest({ cors: true }, async (req, res) => {
   // POSTのみ許可
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  // ログイン済みユーザーのみ許可（OpenAI APIコストの悪用防止）
+  if (!(await verifyAuth(req))) {
+    res.status(401).json({ error: "認証が必要です" });
     return;
   }
 

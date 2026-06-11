@@ -352,9 +352,11 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         import firebaseConfig from './firebase-config.js';
+        import { ensureSignedIn, getIdToken } from './auth.js';
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        await ensureSignedIn(app);
         const db = getDatabase(app);
 
         // Cloud Functions URL
@@ -517,9 +519,16 @@
             input.value = '';
 
             try {
+                const idToken = await getIdToken(app);
+                if (!idToken) {
+                    throw new Error('未ログインのため質問できません。ページを再読み込みしてください');
+                }
                 const response = await fetch(FUNCTIONS_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + idToken
+                    },
                     body: JSON.stringify({
                         question: question,
                         imageUrl: info.imageUrl,

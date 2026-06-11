@@ -13,6 +13,8 @@ from typing import Optional, Callable, Dict, Any
 from dotenv import load_dotenv
 import requests
 
+from . import firebase_auth
+
 # 環境変数の読み込み
 env_path = os.path.expanduser("~/.ai-necklace/.env")
 load_dotenv(env_path)
@@ -42,6 +44,18 @@ class FirebaseSignaling:
         self.on_ice_candidate: Optional[Callable[[str, Dict], None]] = None
         self.on_call_ended: Optional[Callable[[str], None]] = None
 
+    def _db_request(self, method: str, path: str, payload=None,
+                    timeout: float = 10) -> Optional[requests.Response]:
+        """Realtime DBへの認証付きRESTリクエスト。通信エラー時はNone。"""
+        url = f"{self.db_url}/{path}"
+        try:
+            return requests.request(method, url, json=payload,
+                                    params=firebase_auth.db_auth_params(),
+                                    timeout=timeout)
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"シグナリングDBリクエストエラー ({method} {path}): {e}")
+            return None
+
     def create_call(self, callee: str = "phone") -> Optional[str]:
         """発信セッション作成（ラズパイから発信）"""
         session_id = f"{self.device_id}_{int(time.time() * 1000)}"
@@ -52,10 +66,9 @@ class FirebaseSignaling:
             "created_at": int(time.time() * 1000),
         }
 
-        url = f"{self.db_url}/videocall/{session_id}.json"
-        response = requests.put(url, json=call_data, timeout=10)
+        response = self._db_request("PUT", f"videocall/{session_id}.json", call_data)
 
-        if response.status_code == 200:
+        if response is not None and response.status_code == 200:
             self.current_session_id = session_id
             logger.info(f"ビデオ通話発信: {session_id}")
             return session_id
@@ -63,16 +76,14 @@ class FirebaseSignaling:
 
     def send_offer(self, session_id: str, offer: Dict) -> bool:
         """Offer SDPを送信"""
-        url = f"{self.db_url}/videocall/{session_id}/offer.json"
-        response = requests.put(url, json=offer, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("PUT", f"videocall/{session_id}/offer.json", offer)
+        return response is not None and response.status_code == 200
 
     def send_answer(self, session_id: str, answer: Dict) -> bool:
         """Answer SDPを送信"""
-        url = f"{self.db_url}/videocall/{session_id}/answer.json"
-        response = requests.put(url, json=answer, timeout=10)
+        response = self._db_request("PUT", f"videocall/{session_id}/answer.json", answer)
 
-        if response.status_code == 200:
+        if response is not None and response.status_code == 200:
             # ステータスを接続中に更新
             self._update_status(session_id, "connected")
             return True
@@ -81,19 +92,17 @@ class FirebaseSignaling:
     def send_ice_candidate(self, session_id: str, candidate: Dict, is_caller: bool = False) -> bool:
         """ICE候補を送信"""
         path = "caller_candidates" if is_caller else "callee_candidates"
-        url = f"{self.db_url}/videocall/{session_id}/{path}.json"
-        response = requests.post(url, json=candidate, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("POST", f"videocall/{session_id}/{path}.json", candidate)
+        return response is not None and response.status_code == 200
 
     def get_session(self, session_id: str) -> Optional[Dict]:
         """セッション情報を取得"""
-        url = f"{self.db_url}/videocall/{session_id}.json"
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
+        response = self._db_request("GET", f"videocall/{session_id}.json")
+        if response is not None and response.status_code == 200:
             return response.json()
         return None
 
-    def end_call(self, session_id: str = None) -> bool:
+    def end_call(self, session_id: Optional[str] = None) -> bool:
         """通話終了"""
         target_id = session_id or self.current_session_id
         if not target_id:
@@ -116,9 +125,8 @@ class FirebaseSignaling:
 
     def _update_status(self, session_id: str, status: str) -> bool:
         """ステータス更新"""
-        url = f"{self.db_url}/videocall/{session_id}/status.json"
-        response = requests.put(url, json=status, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("PUT", f"videocall/{session_id}/status.json", status)
+        return response is not None and response.status_code == 200
 
     def cleanup_old_sessions(self, max_age_ms: int = 3600000) -> int:
         """古いビデオ通話セッションをクリーンアップ
@@ -130,9 +138,8 @@ class FirebaseSignaling:
             max_age_ms: セッションの最大有効期間（ミリ秒）。デフォルト1時間。
         """
         try:
-            url = f"{self.db_url}/videocall.json"
-            response = requests.get(url, timeout=10)
-            if response.status_code != 200:
+            response = self._db_request("GET", "videocall.json")
+            if response is None or response.status_code != 200:
                 return 0
 
             data = response.json()
@@ -165,9 +172,8 @@ class FirebaseSignaling:
                         should_delete = True
 
                 if should_delete:
-                    delete_url = f"{self.db_url}/videocall/{session_id}.json"
-                    del_response = requests.delete(delete_url, timeout=10)
-                    if del_response.status_code == 200:
+                    del_response = self._db_request("DELETE", f"videocall/{session_id}.json")
+                    if del_response is not None and del_response.status_code == 200:
                         deleted_count += 1
                         logger.debug(f"セッション削除: {session_id}")
 
@@ -221,10 +227,9 @@ class FirebaseSignaling:
 
     def _poll_signals(self) -> None:
         """シグナリングをポーリング"""
-        url = f"{self.db_url}/videocall.json"
-        response = requests.get(url, timeout=10)
+        response = self._db_request("GET", "videocall.json")
 
-        if response.status_code != 200:
+        if response is None or response.status_code != 200:
             return
 
         data = response.json()
@@ -240,12 +245,15 @@ class FirebaseSignaling:
             callee = session.get("callee", "")
 
             # 着信検出（自分がcalleeで、calling状態）
+            # offerがまだ書き込まれていない時点で既読にすると着信を取りこぼすため、
+            # offerが揃ってから既読登録・通知する
             if callee == self.device_id and status == "calling":
                 if session_id not in self._last_seen_sessions:
-                    self._last_seen_sessions.add(session_id)
                     offer = session.get("offer")
-                    if offer and self.on_incoming_call:
-                        self.on_incoming_call(session_id, session)
+                    if offer:
+                        self._last_seen_sessions.add(session_id)
+                        if self.on_incoming_call:
+                            self.on_incoming_call(session_id, session)
 
             # Answer受信（自分がcallerで、answerがある）
             if caller == self.device_id:

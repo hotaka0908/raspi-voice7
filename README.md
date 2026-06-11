@@ -52,6 +52,8 @@ Firebase経由でスマホと連携する音声メッセージ機能。Webアプ
 ```bash
 sudo apt update
 sudo apt install -y python3-pip python3-venv ffmpeg portaudio19-dev python3-lgpio
+# 音楽再生機能を使う場合
+sudo apt install -y mpv && sudo pip3 install --break-system-packages yt-dlp
 
 cd raspi-voice7
 python3 -m venv venv
@@ -69,6 +71,16 @@ OPENAI_API_KEY=your_openai_api_key
 
 # 任意: Tavily API（Web検索用）
 TAVILY_API_KEY=your_tavily_api_key
+
+# Firebase連携を使う場合
+FIREBASE_API_KEY=your_firebase_web_api_key
+FIREBASE_DATABASE_URL=https://your-project-default-rtdb.region.firebasedatabase.app
+FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+
+# Firebase認証（セキュリティルールを auth != null にしている場合は必須）
+# Firebase Console > Authentication でメール/パスワードのユーザーを作成して設定
+FIREBASE_AUTH_EMAIL=device@example.com
+FIREBASE_AUTH_PASSWORD=your_device_account_password
 ```
 
 ### 3. Gmail/カレンダー連携（オプション）

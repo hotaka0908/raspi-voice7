@@ -9,6 +9,7 @@
 import os
 import re
 import base64
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -40,12 +41,39 @@ except ImportError:
     FIREBASE_AVAILABLE = False
 
 
+logger = logging.getLogger("communication")
+
 # Gmail状態管理
 _gmail_service = None
 _last_email_list: List[Dict] = []
 
 # Firebase状態管理
 _firebase_messenger = None
+
+
+def _decode_mail_body(data: str, headers: Optional[List[Dict]] = None) -> str:
+    """Gmail APIのbase64url本文をデコード。
+
+    日本語メールで多いISO-2022-JP / Shift_JIS等、UTF-8以外の
+    文字コードにもフォールバックする。
+    """
+    raw = base64.urlsafe_b64decode(data)
+
+    charsets = ['utf-8', 'iso-2022-jp', 'shift_jis', 'euc-jp']
+    # Content-Typeヘッダーにcharset指定があれば最優先
+    for h in (headers or []):
+        if h.get('name', '').lower() == 'content-type':
+            m = re.search(r'charset="?([\w\-]+)"?', h.get('value', ''), re.IGNORECASE)
+            if m:
+                charsets.insert(0, m.group(1).lower())
+            break
+
+    for charset in charsets:
+        try:
+            return raw.decode(charset)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return raw.decode('utf-8', errors='replace')
 
 
 def init_gmail() -> bool:
@@ -63,7 +91,11 @@ def init_gmail() -> bool:
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                logger.error(f"Gmailトークン更新失敗: {e}")
+                return False
         else:
             if not os.path.exists(Config.GMAIL_CREDENTIALS_PATH):
                 return False
@@ -250,11 +282,11 @@ class GmailRead(Capability):
             payload = msg.get('payload', {})
 
             if 'body' in payload and payload['body'].get('data'):
-                body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
+                body = _decode_mail_body(payload['body']['data'], payload.get('headers'))
             elif 'parts' in payload:
                 for part in payload['parts']:
                     if part.get('mimeType') == 'text/plain' and part.get('body', {}).get('data'):
-                        body = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
+                        body = _decode_mail_body(part['body']['data'], part.get('headers'))
                         break
 
             if len(body) > 500:
@@ -405,11 +437,11 @@ class GmailReply(Capability):
             original_body = ""
             payload = original.get('payload', {})
             if 'body' in payload and payload['body'].get('data'):
-                original_body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
+                original_body = _decode_mail_body(payload['body']['data'], payload.get('headers'))
             elif 'parts' in payload:
                 for part in payload['parts']:
                     if part.get('mimeType') == 'text/plain' and part.get('body', {}).get('data'):
-                        original_body = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
+                        original_body = _decode_mail_body(part['body']['data'], part.get('headers'))
                         break
 
             message = MIMEText(body)

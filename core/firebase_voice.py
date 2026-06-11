@@ -4,6 +4,7 @@ Firebase Voice Messaging Module
 ラズパイとスマホ間で音声メッセージをやり取りするためのモジュール
 Firebase Realtime Database + Cloud Storage を使用
 REST API経由でアクセス（サービスアカウント不要）
+認証は firebase_auth モジュールのIDトークンを使用
 """
 
 import os
@@ -13,6 +14,8 @@ import requests
 import threading
 from typing import Optional, Callable, Dict, List, Any
 from dotenv import load_dotenv
+
+from . import firebase_auth
 
 # ロガー設定
 logger = logging.getLogger("firebase_voice")
@@ -43,41 +46,64 @@ class FirebaseVoiceMessenger:
         self.listener_thread = None
         self.processed_ids = set()
 
+    def _upload_to_storage(self, object_path: str, data: bytes,
+                           content_type: str) -> Optional[str]:
+        """Cloud Storageにアップロードし、閲覧用URL（ダウンロードトークン付き）を返す"""
+        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
+        encoded_path = requests.utils.quote(object_path, safe='')
+        upload_url = f"{storage_url}/{encoded_path}"
+
+        headers = {"Content-Type": content_type}
+        headers.update(firebase_auth.storage_auth_headers())
+        try:
+            response = requests.post(upload_url, headers=headers, data=data, timeout=30)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Storageアップロードエラー ({object_path}): {e}")
+            return None
+
+        if response.status_code != 200:
+            logger.error(f"Storageアップロード失敗 ({object_path}): "
+                         f"{response.status_code} {response.text[:200]}")
+            return None
+
+        media_url = f"{storage_url}/{encoded_path}?alt=media"
+        # ルールを auth != null に締めてもスマホ側の<img>等で表示できるよう、
+        # ダウンロードトークンをURLに付与する
+        try:
+            token = (response.json().get("downloadTokens") or "").split(",")[0]
+            if token:
+                media_url += f"&token={token}"
+        except Exception:
+            pass
+        return media_url
+
+    def _db_request(self, method: str, path: str, payload: Any = None,
+                    timeout: float = 10) -> Optional[requests.Response]:
+        """Realtime DBへの認証付きRESTリクエスト。通信エラー時はNone。"""
+        url = f"{self.db_url}/{path}"
+        try:
+            return requests.request(method, url, json=payload,
+                                    params=firebase_auth.db_auth_params(),
+                                    timeout=timeout)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Firebase DBリクエストエラー ({method} {path}): {e}")
+            return None
+
     def upload_audio(self, audio_data: bytes, filename: str = None) -> Optional[str]:
         """音声データをFirebase Storageにアップロード"""
         if filename is None:
             timestamp = int(time.time() * 1000)
             filename = f"{self.device_id}_{timestamp}.wav"
-
-        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
-        encoded_path = requests.utils.quote(f"audio/{filename}", safe='')
-        upload_url = f"{storage_url}/{encoded_path}"
-
-        headers = {"Content-Type": "audio/wav"}
-        response = requests.post(upload_url, headers=headers, data=audio_data, timeout=30)
-
-        if response.status_code == 200:
-            return f"{storage_url}/{encoded_path}?alt=media"
-        return None
+        return self._upload_to_storage(f"audio/{filename}", audio_data, "audio/wav")
 
     def upload_photo(self, photo_data: bytes, filename: str = None) -> Optional[str]:
         """写真データをFirebase Storageにアップロード"""
         if filename is None:
             timestamp = int(time.time() * 1000)
             filename = f"{self.device_id}_{timestamp}.jpg"
+        return self._upload_to_storage(f"photos/{filename}", photo_data, "image/jpeg")
 
-        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
-        encoded_path = requests.utils.quote(f"photos/{filename}", safe='')
-        upload_url = f"{storage_url}/{encoded_path}"
-
-        headers = {"Content-Type": "image/jpeg"}
-        response = requests.post(upload_url, headers=headers, data=photo_data, timeout=30)
-
-        if response.status_code == 200:
-            return f"{storage_url}/{encoded_path}?alt=media"
-        return None
-
-    def send_message(self, audio_data: bytes, text: str = None) -> bool:
+    def send_message(self, audio_data: bytes, text: Optional[str] = None) -> bool:
         """音声メッセージを送信"""
         timestamp = int(time.time() * 1000)
         filename = f"{self.device_id}_{timestamp}.wav"
@@ -97,11 +123,10 @@ class FirebaseVoiceMessenger:
         if text:
             message_data["text"] = text
 
-        db_url = f"{self.db_url}/messages.json"
-        response = requests.post(db_url, json=message_data, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("POST", "messages.json", message_data)
+        return response is not None and response.status_code == 200
 
-    def send_photo_message(self, photo_data: bytes, text: str = None) -> bool:
+    def send_photo_message(self, photo_data: bytes, text: Optional[str] = None) -> bool:
         """写真メッセージを送信"""
         timestamp = int(time.time() * 1000)
         filename = f"{self.device_id}_{timestamp}.jpg"
@@ -122,9 +147,8 @@ class FirebaseVoiceMessenger:
         if text:
             message_data["text"] = text
 
-        db_url = f"{self.db_url}/messages.json"
-        response = requests.post(db_url, json=message_data, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("POST", "messages.json", message_data)
+        return response is not None and response.status_code == 200
 
     def upload_lifelog_photo(self, photo_data: bytes, date: str, time_str: str,
                              analysis: str = "",
@@ -139,17 +163,11 @@ class FirebaseVoiceMessenger:
             location: 位置情報 (latitude, longitude, accuracy, source)
         """
         filename = f"{time_str}.jpg"
-        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
-        encoded_path = requests.utils.quote(f"lifelogs/{date}/{filename}", safe='')
-        upload_url = f"{storage_url}/{encoded_path}"
-
-        headers = {"Content-Type": "image/jpeg"}
-        response = requests.post(upload_url, headers=headers, data=photo_data, timeout=30)
-
-        if response.status_code != 200:
+        photo_url = self._upload_to_storage(f"lifelogs/{date}/{filename}",
+                                            photo_data, "image/jpeg")
+        if not photo_url:
             return False
 
-        photo_url = f"{storage_url}/{encoded_path}?alt=media"
         timestamp = int(time.time() * 1000)
         time_formatted = f"{time_str[:2]}:{time_str[2:4]}"
 
@@ -166,9 +184,8 @@ class FirebaseVoiceMessenger:
         if location:
             doc_data["location"] = location
 
-        db_url = f"{self.db_url}/lifelogs/{date}/{time_str}.json"
-        response = requests.put(db_url, json=doc_data, timeout=10)
-        return True
+        response = self._db_request("PUT", f"lifelogs/{date}/{time_str}.json", doc_data)
+        return response is not None and response.status_code == 200
 
     def get_lifelogs_for_date(self, date: str) -> List[Dict]:
         """指定日のライフログエントリを取得
@@ -179,10 +196,9 @@ class FirebaseVoiceMessenger:
         Returns:
             ライフログエントリのリスト（時刻順）
         """
-        db_url = f"{self.db_url}/lifelogs/{date}.json"
         try:
-            response = requests.get(db_url, timeout=10)
-            if response.status_code != 200:
+            response = self._db_request("GET", f"lifelogs/{date}.json")
+            if response is None or response.status_code != 200:
                 return []
 
             data = response.json()
@@ -211,31 +227,29 @@ class FirebaseVoiceMessenger:
         Returns:
             成功時True
         """
-        db_url = f"{self.db_url}/lifelogs_summary/{date}.json"
         summary_data = {
             "summary": summary,
             "updatedAt": int(time.time() * 1000)
         }
-        try:
-            response = requests.put(db_url, json=summary_data, timeout=10)
-            return response.status_code == 200
-        except Exception:
-            return False
+        response = self._db_request("PUT", f"lifelogs_summary/{date}.json", summary_data)
+        return response is not None and response.status_code == 200
 
     def get_messages(self, limit: int = 10, unplayed_only: bool = False) -> List[Dict]:
         """メッセージ一覧を取得"""
-        db_url = f"{self.db_url}/messages.json"
-        try:
-            response = requests.get(db_url, timeout=10)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[POLLING] Firebase接続エラー: {e}")
+        response = self._db_request("GET", "messages.json")
+        if response is None:
             return []
 
         if response.status_code != 200:
             logger.error(f"[POLLING] Firebase応答エラー: {response.status_code}")
             return []
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as e:
+            logger.error(f"[POLLING] Firebase応答のJSON解析エラー: {e}")
+            return []
+
         if not data:
             return []
 
@@ -253,21 +267,26 @@ class FirebaseVoiceMessenger:
 
     def download_audio(self, audio_url: str) -> Optional[bytes]:
         """音声データをダウンロード"""
-        response = requests.get(audio_url, timeout=30)
-        if response.status_code == 200:
-            return response.content
+        try:
+            response = requests.get(audio_url, timeout=30,
+                                    headers=firebase_auth.storage_auth_headers())
+            if response.status_code == 200:
+                return response.content
+            logger.error(f"音声ダウンロード失敗: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"音声ダウンロードエラー: {e}")
         return None
 
     def mark_as_played(self, message_id: str) -> None:
         """メッセージを再生済みにマーク"""
-        db_url = f"{self.db_url}/messages/{message_id}/played.json"
-        requests.put(db_url, json=True, timeout=10)
+        if not message_id:
+            return
+        self._db_request("PUT", f"messages/{message_id}/played.json", True)
 
     def update_message_text(self, message_id: str, text: str) -> bool:
         """メッセージのテキストを更新"""
-        db_url = f"{self.db_url}/messages/{message_id}/text.json"
-        response = requests.put(db_url, json=text, timeout=10)
-        return response.status_code == 200
+        response = self._db_request("PUT", f"messages/{message_id}/text.json", text)
+        return response is not None and response.status_code == 200
 
     def start_listening(self, poll_interval: float = 3.0, max_processed_ids: int = 100) -> None:
         """新着メッセージの監視を開始
@@ -310,7 +329,9 @@ class FirebaseVoiceMessenger:
 
                     # processed_idsを現在のメッセージに存在するもののみに絞る
                     # （古いメッセージが削除されたらprocessed_idsからも削除）
-                    if len(self.processed_ids) > max_processed_ids:
+                    # 取得失敗で空リストが返った直後に縮小すると全消えして
+                    # 重複再生するため、取得できた時のみ縮小する
+                    if messages and len(self.processed_ids) > max_processed_ids:
                         self.processed_ids = self.processed_ids & current_ids
                         logger.debug(f"[POLLING] processed_ids縮小: {len(self.processed_ids)} 件")
 
@@ -372,28 +393,14 @@ class FirebaseVoiceMessenger:
         Returns:
             成功時True
         """
-        import logging
-        logger = logging.getLogger(__name__)
-
         timestamp = int(time.time() * 1000)
         filename = f"{self.device_id}_{timestamp}.jpg"
 
         # 1. Storage: /detail_photos/{filename} に画像保存
-        storage_url = f"https://firebasestorage.googleapis.com/v0/b/{self.storage_bucket}/o"
-        encoded_path = requests.utils.quote(f"detail_photos/{filename}", safe='')
-        upload_url = f"{storage_url}/{encoded_path}"
-
-        headers = {"Content-Type": "image/jpeg"}
-        try:
-            response = requests.post(upload_url, headers=headers, data=image_data, timeout=30)
-            if response.status_code != 200:
-                logger.error(f"Failed to upload detail photo: {response.status_code} {response.text}")
-                return False
-        except Exception as e:
-            logger.error(f"Exception uploading detail photo: {e}")
+        image_url = self._upload_to_storage(f"detail_photos/{filename}",
+                                            image_data, "image/jpeg")
+        if not image_url:
             return False
-
-        image_url = f"{storage_url}/{encoded_path}?alt=media"
 
         # 2. Realtime DB: /detail_info に詳細情報保存
         detail_data = {
@@ -406,13 +413,9 @@ class FirebaseVoiceMessenger:
             "read": False
         }
 
-        db_url = f"{self.db_url}/detail_info.json"
-        try:
-            response = requests.post(db_url, json=detail_data, timeout=10)
-            if response.status_code != 200:
-                logger.error(f"Failed to save detail info: {response.status_code} {response.text}")
-                return False
-            return True
-        except Exception as e:
-            logger.error(f"Exception saving detail info: {e}")
+        response = self._db_request("POST", "detail_info.json", detail_data)
+        if response is None or response.status_code != 200:
+            if response is not None:
+                logger.error(f"詳細情報の保存失敗: {response.status_code} {response.text[:200]}")
             return False
+        return True

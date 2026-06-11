@@ -1,24 +1,27 @@
 [Unit]
-Description=raspi-voice6 - Capability UX Voice AI Assistant
+Description=raspi-voice7 - Capability UX Voice AI Assistant
 After=network-online.target sound.target
 Wants=network-online.target
+# 設定エラー等での無限再起動を防ぐ（5分間に10回失敗したら停止）
+StartLimitIntervalSec=300
+StartLimitBurst=10
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/raspi-voice6
-ExecStart=/home/pi/raspi-voice6/venv/bin/python /home/pi/raspi-voice6/main.py
+User=hotaka
+WorkingDirectory=/home/hotaka/raspi-voice7
+ExecStart=/home/hotaka/raspi-voice7/venv/bin/python /home/hotaka/raspi-voice7/main.py
 Restart=always
 RestartSec=5
 
 # Environment
 Environment=PYTHONUNBUFFERED=1
-Environment=HOME=/home/pi
+Environment=HOME=/home/hotaka
 
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=raspi-voice6
+SyslogIdentifier=raspi-voice7
 
 [Install]
 WantedBy=multi-user.target
