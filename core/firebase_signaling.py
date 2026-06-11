@@ -68,7 +68,9 @@ class FirebaseSignaling:
                                     params=firebase_auth.db_auth_params(),
                                     timeout=timeout)
         except requests.exceptions.RequestException as e:
-            logger.warning(f"シグナリングDBリクエストエラー ({method} {path}): {e}")
+            # 例外文字列には認証トークン付きURLが含まれるため除去してログ
+            err = str(e).split("?auth=")[0]
+            logger.warning(f"シグナリングDBリクエストエラー ({method} {path}): {err}")
             return None
 
     def create_call(self, callee: str = "phone") -> Optional[str]:

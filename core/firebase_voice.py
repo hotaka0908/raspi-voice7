@@ -108,7 +108,9 @@ class FirebaseVoiceMessenger:
                                     params=firebase_auth.db_auth_params(),
                                     timeout=timeout)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Firebase DBリクエストエラー ({method} {path}): {e}")
+            # 例外文字列には認証トークン付きURLが含まれるため除去してログ
+            err = str(e).split("?auth=")[0]
+            logger.error(f"Firebase DBリクエストエラー ({method} {path}): {err}")
             return None
 
     def upload_audio(self, audio_data: bytes, filename: str = None) -> Optional[str]:
@@ -296,7 +298,8 @@ class FirebaseVoiceMessenger:
                 return response.content
             logger.error(f"音声ダウンロード失敗: {response.status_code}")
         except requests.exceptions.RequestException as e:
-            logger.error(f"音声ダウンロードエラー: {e}")
+            # トークン付きURLをログに残さない
+            logger.error(f"音声ダウンロードエラー: {str(e).split('?alt=media')[0]}")
         return None
 
     def mark_as_played(self, message_id: str) -> None:
