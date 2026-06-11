@@ -31,12 +31,14 @@ class FirebaseSignaling:
     """Firebase WebRTC Signaling"""
 
     # 適応ポーリング（待機時）: 活動がないほど間隔を伸ばして節電する
-    # 最大値は着信検出の遅延に直結するため10秒に抑える
-    IDLE_INTERVAL_ACTIVE = 2.0
-    IDLE_INTERVAL_IDLE = 5.0       # 2分以上活動なし
-    IDLE_INTERVAL_DEEP_IDLE = 10.0  # 10分以上活動なし
-    IDLE_THRESHOLD = 120           # 秒
-    DEEP_IDLE_THRESHOLD = 600      # 秒
+    # (アイドル秒数の下限, ポーリング間隔秒) — 上から順に評価
+    # 間隔は着信検出の遅延に直結する（30分放置後の着信は最大30秒遅れる）
+    IDLE_POLL_STAGES = [
+        (1800, 30.0),  # 30分以上放置
+        (600, 15.0),   # 10分以上
+        (300, 5.0),    # 5分以上
+        (0, 2.0),      # 活動中
+    ]
 
     def __init__(self, device_id: str = "raspi"):
         self.device_id = device_id
@@ -226,12 +228,20 @@ class FirebaseSignaling:
                     time.sleep(self._active_interval)
                 else:
                     idle = time.time() - self._last_activity
-                    if idle < self.IDLE_THRESHOLD:
-                        time.sleep(self.IDLE_INTERVAL_ACTIVE)
-                    elif idle < self.DEEP_IDLE_THRESHOLD:
-                        time.sleep(self.IDLE_INTERVAL_IDLE)
-                    else:
-                        time.sleep(self.IDLE_INTERVAL_DEEP_IDLE)
+                    interval = self.IDLE_POLL_STAGES[-1][1]
+                    for threshold, stage_interval in self.IDLE_POLL_STAGES:
+                        if idle >= threshold:
+                            interval = stage_interval
+                            break
+                    # 停止要求や活動復帰に応えられるよう1秒刻みでスリープ
+                    slept = 0.0
+                    while slept < interval and self.running:
+                        time.sleep(min(1.0, interval - slept))
+                        slept += 1.0
+                        # 活動があれば（着信応答・発信等）すぐ高速側へ
+                        if self.current_session_id or \
+                                time.time() - self._last_activity < 2:
+                            break
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()

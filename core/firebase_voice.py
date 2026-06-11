@@ -36,11 +36,14 @@ class FirebaseVoiceMessenger:
     """Firebase を使った音声メッセージング"""
 
     # 適応ポーリング: 活動がないほど間隔を伸ばして節電する
-    POLL_INTERVAL_ACTIVE = 3.0     # 直近に活動あり
-    POLL_INTERVAL_IDLE = 10.0      # 2分以上活動なし
-    POLL_INTERVAL_DEEP_IDLE = 30.0  # 10分以上活動なし
-    IDLE_THRESHOLD = 120           # 秒
-    DEEP_IDLE_THRESHOLD = 600      # 秒
+    # (アイドル秒数の下限, ポーリング間隔秒) — 上から順に評価
+    # 使用中(直近5分)は高速、放置されたら一気に間隔を伸ばす（デモ機運用）
+    POLL_STAGES = [
+        (1800, 180.0),  # 30分以上放置: 3分ごと
+        (600, 60.0),    # 10分以上: 60秒ごと
+        (300, 10.0),    # 5分以上: 10秒ごと
+        (0, 3.0),       # 活動中: start_listeningのpoll_intervalで上書き
+    ]
 
     def __init__(self, device_id: str = "raspi",
                  on_message_received: Optional[Callable] = None):
@@ -60,11 +63,10 @@ class FirebaseVoiceMessenger:
 
     def _current_poll_interval(self) -> float:
         idle = time.time() - self.last_activity
-        if idle < self.IDLE_THRESHOLD:
-            return self.POLL_INTERVAL_ACTIVE
-        if idle < self.DEEP_IDLE_THRESHOLD:
-            return self.POLL_INTERVAL_IDLE
-        return self.POLL_INTERVAL_DEEP_IDLE
+        for threshold, interval in self.POLL_STAGES:
+            if idle >= threshold:
+                return interval
+        return self.POLL_STAGES[-1][1]
 
     def _upload_to_storage(self, object_path: str, data: bytes,
                            content_type: str) -> Optional[str]:
@@ -315,7 +317,9 @@ class FirebaseVoiceMessenger:
             poll_interval: 活動時のポーリング間隔（秒）。アイドル時は自動延長
             max_processed_ids: processed_idsの最大保持数
         """
-        self.POLL_INTERVAL_ACTIVE = poll_interval
+        # 活動中（しきい値0）の間隔を引数で上書き
+        self.POLL_STAGES = [(t, poll_interval if t == 0 else i)
+                            for t, i in self.POLL_STAGES]
         self.running = True
         self.processed_ids = set()
 
@@ -391,12 +395,15 @@ class FirebaseVoiceMessenger:
                 except Exception as e:
                     logger.error(f"[POLLING] ポーリングエラー: {e}")
 
-                # 適応ポーリング: 停止要求に応えられるよう1秒刻みでスリープ
+                # 適応ポーリング: 停止要求・活動復帰に応えられるよう1秒刻みでスリープ
                 interval = self._current_poll_interval()
                 slept = 0.0
                 while slept < interval and self.running:
                     time.sleep(min(1.0, interval - slept))
                     slept += 1.0
+                    # ボタン操作等で活動が通知されたら長いスリープを打ち切る
+                    if time.time() - self.last_activity < 2:
+                        break
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()
