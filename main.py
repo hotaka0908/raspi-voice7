@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 import logging
 from logging.handlers import RotatingFileHandler
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -103,6 +103,33 @@ DOUBLE_CLICK_THRESHOLD = 0.3  # ダブルクリック判定時間（秒）
 # ビデオ通話状態
 _signaling: Optional[FirebaseSignaling] = None
 _pending_incoming_call: Optional[dict] = None
+
+# 節電: アイドル時のOpenAI接続スタンバイ
+standby_mode = False
+last_interaction_time: float = time.time()
+_pending_notifications: List[str] = []
+
+
+def notify_firebase_activity() -> None:
+    """ユーザー操作をFirebaseポーリングに伝え、間隔を高速側に戻す"""
+    try:
+        messenger = get_firebase_messenger()
+        if messenger:
+            messenger.notify_activity()
+    except Exception:
+        pass
+    if _signaling:
+        _signaling.notify_activity()
+
+
+def wake_from_standby(reason: str = "") -> None:
+    """スタンバイ解除（メインループが再接続する）"""
+    global standby_mode, last_interaction_time
+    if standby_mode:
+        logger.info(f"スタンバイ解除: {reason}")
+        standby_mode = False
+    last_interaction_time = time.time()
+    notify_firebase_activity()
 _openai_client: Optional[OpenAIRealtimeClient] = None
 
 
@@ -768,6 +795,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
                         await asyncio.sleep(0.2)
                         continue
                     last_button_press_time = current_time
+                    wake_from_standby("ボタン押下")
 
                     # 着信中なら応答
                     if _pending_incoming_call:
@@ -858,7 +886,7 @@ async def audio_input_loop(client: OpenAIRealtimeClient, audio_handler: AudioHan
 
 async def main_async():
     """非同期メインループ"""
-    global running, button, audio_handler
+    global running, button, audio_handler, standby_mode, last_interaction_time
 
     # ビデオ通話初期化（正しいイベントループで）
     loop = asyncio.get_running_loop()
@@ -897,6 +925,11 @@ async def main_async():
                 )
             except Exception as e:
                 logger.error(f"アラーム通知エラー: {e}")
+        elif standby_mode:
+            # スタンバイ中は復帰させて、再接続後に送信する
+            logger.info("スタンバイ中のためアラーム通知を保留して復帰します")
+            _pending_notifications.append(message)
+            wake_from_standby("アラーム通知")
         else:
             logger.warning(f"未接続のためアラーム通知をスキップ: {message}")
 
@@ -914,6 +947,10 @@ async def main_async():
                 )
             except Exception as e:
                 logger.error(f"リマインダー通知エラー: {e}")
+        elif standby_mode:
+            logger.info("スタンバイ中のためリマインダー通知を保留して復帰します")
+            _pending_notifications.append(message)
+            wake_from_standby("リマインダー通知")
         else:
             logger.warning(f"未接続のためリマインダー通知をスキップ: {message}")
 
@@ -936,6 +973,29 @@ async def main_async():
                         client.last_response_time = None
                         client.last_audio_time = None
 
+            # 最終操作時刻の更新（応答・音声再生・ボタンの最新時刻）
+            for ts in (client.last_response_time, client.last_audio_time,
+                       last_button_press_time):
+                if ts and ts > last_interaction_time:
+                    last_interaction_time = ts
+
+            # 節電: 一定時間操作がなければOpenAI接続をスタンバイ
+            if (client.is_connected and not standby_mode
+                    and not client.is_responding
+                    and not client.voice_message_mode
+                    and not is_in_videocall()
+                    and time.time() - last_interaction_time >= Config.IDLE_DISCONNECT_TIMEOUT):
+                logger.info(f"--- {Config.IDLE_DISCONNECT_TIMEOUT // 60}分間操作がないため"
+                            "OpenAI接続をスタンバイ（ボタンで復帰） ---")
+                standby_mode = True
+                if receive_task and not receive_task.done():
+                    receive_task.cancel()
+                    try:
+                        await receive_task
+                    except asyncio.CancelledError:
+                        pass
+                await client.disconnect()
+
             # セッションリセット
             if client.needs_session_reset and client.is_connected:
                 client.needs_session_reset = False
@@ -950,8 +1010,8 @@ async def main_async():
                 await client.reset_session()
                 receive_task = asyncio.create_task(client.receive_messages())
 
-            # 接続
-            if not client.is_connected:
+            # 接続（スタンバイ中は再接続しない。ボタン等で復帰）
+            if not client.is_connected and not standby_mode:
                 if client.needs_reconnect:
                     success = await client.reconnect()
                     if not success:
@@ -971,6 +1031,17 @@ async def main_async():
                     input_task = asyncio.create_task(
                         audio_input_loop(client, audio_handler)
                     )
+
+                # 接続直後に即スタンバイへ落ちないように基準時刻を更新
+                last_interaction_time = time.time()
+
+                # スタンバイ中に保留されたアラーム等の通知を送信
+                while _pending_notifications:
+                    msg = _pending_notifications.pop(0)
+                    try:
+                        await client.send_text_message(msg)
+                    except Exception as e:
+                        logger.error(f"保留通知の送信エラー: {e}")
 
                 if first_start:
                     print("\n" + "=" * 50)

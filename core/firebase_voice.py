@@ -35,6 +35,13 @@ FIREBASE_CONFIG = {
 class FirebaseVoiceMessenger:
     """Firebase を使った音声メッセージング"""
 
+    # 適応ポーリング: 活動がないほど間隔を伸ばして節電する
+    POLL_INTERVAL_ACTIVE = 3.0     # 直近に活動あり
+    POLL_INTERVAL_IDLE = 10.0      # 2分以上活動なし
+    POLL_INTERVAL_DEEP_IDLE = 30.0  # 10分以上活動なし
+    IDLE_THRESHOLD = 120           # 秒
+    DEEP_IDLE_THRESHOLD = 600      # 秒
+
     def __init__(self, device_id: str = "raspi",
                  on_message_received: Optional[Callable] = None):
         self.device_id = device_id
@@ -45,6 +52,19 @@ class FirebaseVoiceMessenger:
         self.running = False
         self.listener_thread = None
         self.processed_ids = set()
+        self.last_activity = time.time()
+
+    def notify_activity(self) -> None:
+        """ユーザー操作などの活動を通知し、ポーリングを高速側に戻す"""
+        self.last_activity = time.time()
+
+    def _current_poll_interval(self) -> float:
+        idle = time.time() - self.last_activity
+        if idle < self.IDLE_THRESHOLD:
+            return self.POLL_INTERVAL_ACTIVE
+        if idle < self.DEEP_IDLE_THRESHOLD:
+            return self.POLL_INTERVAL_IDLE
+        return self.POLL_INTERVAL_DEEP_IDLE
 
     def _upload_to_storage(self, object_path: str, data: bytes,
                            content_type: str) -> Optional[str]:
@@ -292,9 +312,10 @@ class FirebaseVoiceMessenger:
         """新着メッセージの監視を開始
 
         Args:
-            poll_interval: ポーリング間隔（秒）
+            poll_interval: 活動時のポーリング間隔（秒）。アイドル時は自動延長
             max_processed_ids: processed_idsの最大保持数
         """
+        self.POLL_INTERVAL_ACTIVE = poll_interval
         self.running = True
         self.processed_ids = set()
 
@@ -339,6 +360,7 @@ class FirebaseVoiceMessenger:
                     new_messages = [m for m in messages if m.get("id") not in self.processed_ids]
                     if new_messages:
                         logger.info(f"[POLLING] 新着メッセージ {len(new_messages)} 件検出")
+                        self.last_activity = time.time()
 
                     for msg in reversed(messages):
                         msg_id = msg.get("id")
@@ -369,7 +391,12 @@ class FirebaseVoiceMessenger:
                 except Exception as e:
                     logger.error(f"[POLLING] ポーリングエラー: {e}")
 
-                time.sleep(poll_interval)
+                # 適応ポーリング: 停止要求に応えられるよう1秒刻みでスリープ
+                interval = self._current_poll_interval()
+                slept = 0.0
+                while slept < interval and self.running:
+                    time.sleep(min(1.0, interval - slept))
+                    slept += 1.0
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()

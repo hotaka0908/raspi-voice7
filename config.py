@@ -57,6 +57,7 @@ class Config:
     # セッション設定
     SESSION_RESET_TIMEOUT = 10  # 秒（応答後このくらい経過でリセット）
     VOICE_MESSAGE_TIMEOUT = 60  # 秒（音声メッセージモードのタイムアウト）
+    IDLE_DISCONNECT_TIMEOUT = 300  # 秒（この間操作がなければOpenAI接続をスタンバイ。ボタンで復帰）
 
     # 再接続設定
     MAX_RECONNECT_ATTEMPTS = 5

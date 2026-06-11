@@ -30,12 +30,25 @@ FIREBASE_CONFIG = {
 class FirebaseSignaling:
     """Firebase WebRTC Signaling"""
 
+    # 適応ポーリング（待機時）: 活動がないほど間隔を伸ばして節電する
+    # 最大値は着信検出の遅延に直結するため10秒に抑える
+    IDLE_INTERVAL_ACTIVE = 2.0
+    IDLE_INTERVAL_IDLE = 5.0       # 2分以上活動なし
+    IDLE_INTERVAL_DEEP_IDLE = 10.0  # 10分以上活動なし
+    IDLE_THRESHOLD = 120           # 秒
+    DEEP_IDLE_THRESHOLD = 600      # 秒
+
     def __init__(self, device_id: str = "raspi"):
         self.device_id = device_id
         self.db_url = FIREBASE_CONFIG["databaseURL"]
         self.running = False
         self.listener_thread: Optional[threading.Thread] = None
         self.current_session_id: Optional[str] = None
+        self._last_activity = time.time()
+
+    def notify_activity(self) -> None:
+        """ユーザー操作などの活動を通知し、ポーリングを高速側に戻す"""
+        self._last_activity = time.time()
 
         # コールバック
         self.on_incoming_call: Optional[Callable[[str, Dict], None]] = None
@@ -208,11 +221,17 @@ class FirebaseSignaling:
                 except Exception as e:
                     logger.debug(f"シグナリングポーリングエラー: {e}")
 
-                # 通話中は高速ポーリング、待機中は低速ポーリング
+                # 通話中は高速ポーリング、待機中は活動状況に応じた適応ポーリング
                 if self.current_session_id:
                     time.sleep(self._active_interval)
                 else:
-                    time.sleep(self._idle_interval)
+                    idle = time.time() - self._last_activity
+                    if idle < self.IDLE_THRESHOLD:
+                        time.sleep(self.IDLE_INTERVAL_ACTIVE)
+                    elif idle < self.DEEP_IDLE_THRESHOLD:
+                        time.sleep(self.IDLE_INTERVAL_IDLE)
+                    else:
+                        time.sleep(self.IDLE_INTERVAL_DEEP_IDLE)
 
         self.listener_thread = threading.Thread(target=poll_loop, daemon=True)
         self.listener_thread.start()
@@ -252,6 +271,8 @@ class FirebaseSignaling:
                     offer = session.get("offer")
                     if offer:
                         self._last_seen_sessions.add(session_id)
+                        # 着信中は応答前でもポーリングを高速側に戻す
+                        self._last_activity = time.time()
                         if self.on_incoming_call:
                             self.on_incoming_call(session_id, session)
 
