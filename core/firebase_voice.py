@@ -39,10 +39,9 @@ class FirebaseVoiceMessenger:
     # (アイドル秒数の下限, ポーリング間隔秒) — 上から順に評価
     # 使用中(直近5分)は高速、放置されたら一気に間隔を伸ばす（デモ機運用）
     POLL_STAGES = [
-        (1800, 180.0),  # 30分以上放置: 3分ごと
-        (600, 60.0),    # 10分以上: 60秒ごと
-        (300, 10.0),    # 5分以上: 10秒ごと
-        (0, 3.0),       # 活動中: start_listeningのpoll_intervalで上書き
+        (600, 180.0),  # 10分以上放置: 3分ごと
+        (300, 10.0),   # 5分以上: 10秒ごと
+        (0, 3.0),      # 活動中: start_listeningのpoll_intervalで上書き
     ]
 
     def __init__(self, device_id: str = "raspi",
