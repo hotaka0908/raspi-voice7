@@ -83,7 +83,17 @@ class OpenAIRealtimeClient:
                 "Authorization": f"Bearer {self.api_key}",
             }
 
-            self.ws = await websockets.connect(url, additional_headers=headers)
+            # ping_interval を短くして、携帯テザリングのNATがアイドル接続を
+            # 切る前に必ず通信を発生させ続ける（keepalive）。カメラ等のツール実行中は
+            # WebSocketが10秒以上無通信になり、keepaliveが無いとその間に接続が切れて
+            # ツール結果(response.create)を送れず「ロード音のあと無言」になる。
+            # ping_timeout は遅い回線でpongが遅れても誤切断しないよう緩めに取る。
+            self.ws = await websockets.connect(
+                url,
+                additional_headers=headers,
+                ping_interval=5,
+                ping_timeout=20,
+            )
             self.is_connected = True
             self.loop = asyncio.get_event_loop()
 
