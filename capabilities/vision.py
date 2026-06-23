@@ -181,7 +181,7 @@ promptで質問を渡すと、見たものについてその質問に答える""
                         "content": [
                             {
                                 "type": "text",
-                                "text": prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"
+                                "text": prompt + "\n\nPlease respond in English. Keep it to 1-2 short sentences since it will be read aloud."
                             },
                             {
                                 "type": "image_url",
