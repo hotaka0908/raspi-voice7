@@ -62,7 +62,8 @@ class OpenAIRealtimeClient:
                 "input": {
                     "format": {"type": "audio/pcm", "rate": 24000},
                     "transcription": {
-                        "model": "whisper-1"
+                        "model": "whisper-1",
+                        "language": "ja"
                     },
                     "turn_detection": None  # 手動制御
                 },

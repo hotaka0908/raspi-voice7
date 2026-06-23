@@ -116,7 +116,7 @@ class SendDetailInfo(Capability):
 ## 補足
 （1-2文で豆知識）
 
-Please respond in English."""
+日本語で回答してください。"""
                             },
                             {
                                 "type": "image_url",

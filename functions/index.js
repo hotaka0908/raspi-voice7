@@ -71,7 +71,7 @@ ${briefAnalysis || ""}
 ■ 詳細情報:
 ${detailAnalysis || ""}
 
-Please respond in English, concisely in about 2-3 sentences.`,
+回答は日本語で、2-3文程度で簡潔にお願いします。`,
       },
       {
         role: "user",
